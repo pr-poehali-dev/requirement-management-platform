@@ -7,6 +7,11 @@ import {
   emptyReqForm, delayClass,
 } from '@/types';
 
+const ALL_ENVS: EnvType[] = ['Prod', 'ProdLike', 'Stage', 'Test', 'Dev'];
+const ALL_STAGES: AppStage[] = ['Стадия Дизайна', 'Стадия Деплоя', 'Стадия Рантайма'];
+const ALL_INTERACTIONS: InteractionLevel[] = ['Обязательный', 'Рекомендуется', 'Не требуется'];
+const ALL_APPLICABILITY: Applicability[] = ['Применимо', 'Не применимо'];
+
 export interface RequirementsTabHandle {
   isOnSubpage: boolean;
   openCreate: () => void;
@@ -29,6 +34,13 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
     const [filterStatus, setFilterStatus] = useState<Status | 'all'>('all');
     const [filterPriority, setFilterPriority] = useState<Priority | 'all'>('all');
     const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
+    const [filterEnv, setFilterEnv] = useState<EnvType | 'all'>('all');
+    const [filterStage, setFilterStage] = useState<AppStage | 'all'>('all');
+    const [filterInteraction, setFilterInteraction] = useState<InteractionLevel | 'all'>('all');
+    const [filterProcurement, setFilterProcurement] = useState<Applicability | 'all'>('all');
+    const [filterScoreCategory, setFilterScoreCategory] = useState<number | 'all'>('all');
+    const [filterScoreWeight, setFilterScoreWeight] = useState<number | 'all'>('all');
+    const [showAdvanced, setShowAdvanced] = useState(false);
     const [tagInput, setTagInput] = useState('');
 
     useImperativeHandle(ref, () => ({
@@ -37,6 +49,10 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
       goBack: () => setReqView('list'),
     }), [reqView]);
 
+    const hasActiveFilters = search || filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all' ||
+      filterEnv !== 'all' || filterStage !== 'all' || filterInteraction !== 'all' ||
+      filterProcurement !== 'all' || filterScoreCategory !== 'all' || filterScoreWeight !== 'all';
+
     const filteredReqs = requirements.filter(r => {
       const matchSearch = r.title.toLowerCase().includes(search.toLowerCase()) ||
         r.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -44,8 +60,20 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
       return matchSearch &&
         (filterStatus === 'all' || r.status === filterStatus) &&
         (filterPriority === 'all' || r.priority === filterPriority) &&
-        (filterCategory === 'all' || r.category === filterCategory);
+        (filterCategory === 'all' || r.category === filterCategory) &&
+        (filterEnv === 'all' || r.environments.includes(filterEnv)) &&
+        (filterStage === 'all' || r.appStages.includes(filterStage)) &&
+        (filterInteraction === 'all' || r.externalWithIod === filterInteraction || r.externalWithoutIod === filterInteraction || r.internalWithIod === filterInteraction || r.internalWithoutIod === filterInteraction) &&
+        (filterProcurement === 'all' || r.procurement === filterProcurement) &&
+        (filterScoreCategory === 'all' || r.scoringCategory === filterScoreCategory) &&
+        (filterScoreWeight === 'all' || r.scoringWeight === filterScoreWeight);
     });
+
+    function resetAllFilters() {
+      setSearch(''); setFilterStatus('all'); setFilterPriority('all'); setFilterCategory('all');
+      setFilterEnv('all'); setFilterStage('all'); setFilterInteraction('all');
+      setFilterProcurement('all'); setFilterScoreCategory('all'); setFilterScoreWeight('all');
+    }
 
     const stats = {
       total: requirements.length,
@@ -100,32 +128,78 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
               ))}
             </div>
 
-            <div className="glass rounded-2xl p-5 mb-6 flex flex-wrap gap-3 items-center">
-              <div className="relative flex-1 min-w-48">
-                <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по ID, названию, описанию..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 transition-all" />
-              </div>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
-                <option value="all">Все статусы</option>
-                {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as Priority | 'all')}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
-                <option value="all">Все приоритеты</option>
-                {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as Category | 'all')}
-                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
-                <option value="all">Все категории</option>
-                {Object.entries(CATEGORY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              {(search || filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all') && (
-                <button onClick={() => { setSearch(''); setFilterStatus('all'); setFilterPriority('all'); setFilterCategory('all'); }}
-                  className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground glass rounded-xl transition-all">
-                  <Icon name="X" size={14} />Сбросить
+            <div className="glass rounded-2xl p-5 mb-6 space-y-3">
+              {/* Основные фильтры */}
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="relative flex-1 min-w-48">
+                  <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по ID, названию, описанию..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 transition-all" />
+                </div>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as Status | 'all')}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                  <option value="all">Все статусы</option>
+                  {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+                <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as Priority | 'all')}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                  <option value="all">Все приоритеты</option>
+                  {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as Category | 'all')}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                  <option value="all">Все категории</option>
+                  {Object.entries(CATEGORY_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                </select>
+                <button onClick={() => setShowAdvanced(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 text-sm glass rounded-xl transition-all ${showAdvanced ? 'text-cyan-400 border-cyan-500/30' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <Icon name="SlidersHorizontal" size={14} />Доп. фильтры
+                  {(filterEnv !== 'all' || filterStage !== 'all' || filterInteraction !== 'all' || filterProcurement !== 'all' || filterScoreCategory !== 'all' || filterScoreWeight !== 'all') && (
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 ml-0.5" />
+                  )}
                 </button>
+                {hasActiveFilters && (
+                  <button onClick={resetAllFilters}
+                    className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-muted-foreground hover:text-foreground glass rounded-xl transition-all">
+                    <Icon name="X" size={14} />Сбросить
+                  </button>
+                )}
+              </div>
+
+              {/* Расширенные фильтры */}
+              {showAdvanced && (
+                <div className="border-t border-white/8 pt-3 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  <select value={filterEnv} onChange={e => setFilterEnv(e.target.value as EnvType | 'all')}
+                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                    <option value="all">Среда: все</option>
+                    {ALL_ENVS.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <select value={filterStage} onChange={e => setFilterStage(e.target.value as AppStage | 'all')}
+                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                    <option value="all">Стадия: все</option>
+                    {ALL_STAGES.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <select value={filterInteraction} onChange={e => setFilterInteraction(e.target.value as InteractionLevel | 'all')}
+                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                    <option value="all">Взаимодействие: все</option>
+                    {ALL_INTERACTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <select value={filterProcurement} onChange={e => setFilterProcurement(e.target.value as Applicability | 'all')}
+                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                    <option value="all">Закупки: все</option>
+                    {ALL_APPLICABILITY.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <select value={filterScoreCategory} onChange={e => setFilterScoreCategory(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                    <option value="all">Категория: все</option>
+                    {[1,2,3,4].map(n => <option key={n} value={n}>Категория {n}</option>)}
+                  </select>
+                  <select value={filterScoreWeight} onChange={e => setFilterScoreWeight(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                    className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                    <option value="all">Вес: все</option>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>Вес {n}</option>)}
+                  </select>
+                </div>
               )}
             </div>
 

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import Icon from '@/components/ui/icon';
 import {
@@ -14,6 +15,7 @@ import SolutionsTab, { SolutionsTabHandle } from '@/components/tabs/SolutionsTab
 import ArchitecturesTab, { ArchitecturesTabHandle } from '@/components/tabs/ArchitecturesTab';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('domains');
   const [isOnSubpage, setIsOnSubpage] = useState(false);
 
@@ -107,6 +109,10 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/20 transition-all">
+              <Icon name="Network" size={15} />
+              Карта данных
+            </button>
             {isOnSubpage && (
               <button onClick={goBack} className="flex items-center gap-2 px-4 py-2 glass rounded-xl text-sm text-muted-foreground hover:text-foreground transition-all">
                 <Icon name="ArrowLeft" size={16} />Назад

@@ -6,6 +6,10 @@ import Icon from '@/components/ui/icon';
 type Priority = 'critical' | 'high' | 'medium' | 'low';
 type Status = 'draft' | 'review' | 'approved' | 'rejected';
 type Category = 'functional' | 'non-functional' | 'security' | 'performance' | 'integration' | 'ui-ux';
+type EnvType = 'Prod' | 'ProdLike' | 'Stage' | 'Test' | 'Dev';
+type AppStage = 'Стадия Дизайна' | 'Стадия Деплоя' | 'Стадия Рантайма';
+type InteractionLevel = 'Обязательный' | 'Рекомендуется' | 'Не требуется';
+type Applicability = 'Применимо' | 'Не применимо';
 
 interface MermaidScheme {
   id: string;
@@ -63,9 +67,25 @@ interface Requirement {
   createdAt: string;
   updatedAt: string;
   version: string;
+  environments: EnvType[];
+  appStages: AppStage[];
+  externalWithIod: InteractionLevel;
+  externalWithoutIod: InteractionLevel;
+  internalWithIod: InteractionLevel;
+  internalWithoutIod: InteractionLevel;
+  procurement: Applicability;
+  scoringCategory: number;
+  scoringWeight: number;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
+
+const DEFAULT_REQ_EXTRA = {
+  environments: [] as EnvType[], appStages: [] as AppStage[],
+  externalWithIod: 'Не требуется' as InteractionLevel, externalWithoutIod: 'Не требуется' as InteractionLevel,
+  internalWithIod: 'Не требуется' as InteractionLevel, internalWithoutIod: 'Не требуется' as InteractionLevel,
+  procurement: 'Не применимо' as Applicability, scoringCategory: 1, scoringWeight: 1,
+};
 
 const MOCK_REQUIREMENTS: Requirement[] = [
   {
@@ -73,36 +93,43 @@ const MOCK_REQUIREMENTS: Requirement[] = [
     description: 'Система должна поддерживать единый вход (SSO) через корпоративный LDAP и OAuth 2.0. Время сессии — 8 часов с автоматическим продлением при активности.',
     category: 'security', priority: 'critical', status: 'approved',
     tags: ['auth', 'SSO', 'LDAP', 'OAuth'], author: 'Алексей Петров', createdAt: '2024-01-15', updatedAt: '2024-02-10', version: '2.1',
+    ...DEFAULT_REQ_EXTRA, environments: ['ProdLike', 'Dev'], appStages: ['Стадия Деплоя', 'Стадия Рантайма'],
+    externalWithIod: 'Обязательный', internalWithIod: 'Обязательный', procurement: 'Применимо', scoringCategory: 3, scoringWeight: 8,
   },
   {
     id: 'REQ-002', title: 'API Gateway с rate limiting',
     description: 'Все внешние API-запросы проходят через единый шлюз. Rate limit: 1000 запросов/минуту на клиента.',
     category: 'performance', priority: 'high', status: 'review',
     tags: ['API', 'gateway', 'rate-limit'], author: 'Мария Иванова', createdAt: '2024-01-20', updatedAt: '2024-02-15', version: '1.3',
+    ...DEFAULT_REQ_EXTRA,
   },
   {
     id: 'REQ-003', title: 'Интеграция с 1С ERP',
     description: 'Двусторонняя синхронизация данных с 1С:Предприятие 8.3. Обмен через REST API 1С, формат JSON.',
     category: 'integration', priority: 'high', status: 'draft',
     tags: ['1С', 'ERP', 'sync', 'REST'], author: 'Дмитрий Сидоров', createdAt: '2024-02-01', updatedAt: '2024-02-20', version: '1.0',
+    ...DEFAULT_REQ_EXTRA,
   },
   {
     id: 'REQ-004', title: 'Время загрузки страниц < 2с',
     description: 'Все страницы приложения должны загружаться менее чем за 2 секунды при подключении 10 Мбит/с.',
     category: 'performance', priority: 'critical', status: 'approved',
     tags: ['performance', 'Core Web Vitals', 'LCP'], author: 'Елена Козлова', createdAt: '2024-01-10', updatedAt: '2024-01-28', version: '3.0',
+    ...DEFAULT_REQ_EXTRA,
   },
   {
     id: 'REQ-005', title: 'Адаптивный интерфейс',
     description: 'Интерфейс должен корректно отображаться на устройствах с разрешением от 320px до 4K.',
     category: 'ui-ux', priority: 'medium', status: 'approved',
     tags: ['responsive', 'mobile', 'browsers'], author: 'Антон Новиков', createdAt: '2024-01-18', updatedAt: '2024-02-05', version: '1.5',
+    ...DEFAULT_REQ_EXTRA,
   },
   {
     id: 'REQ-006', title: 'Шифрование данных в покое',
     description: 'Все персональные данные хранятся в зашифрованном виде. Алгоритм: AES-256-GCM.',
     category: 'security', priority: 'critical', status: 'review',
     tags: ['encryption', 'AES-256', 'GDPR', 'HSM'], author: 'Алексей Петров', createdAt: '2024-02-05', updatedAt: '2024-02-22', version: '1.2',
+    ...DEFAULT_REQ_EXTRA,
   },
 ];
 
@@ -150,6 +177,15 @@ const emptyReqForm = {
   title: '', description: '', category: 'functional' as Category,
   priority: 'medium' as Priority, status: 'draft' as Status,
   tags: [] as string[], author: '', version: '1.0',
+  environments: [] as EnvType[],
+  appStages: [] as AppStage[],
+  externalWithIod: 'Не требуется' as InteractionLevel,
+  externalWithoutIod: 'Не требуется' as InteractionLevel,
+  internalWithIod: 'Не требуется' as InteractionLevel,
+  internalWithoutIod: 'Не требуется' as InteractionLevel,
+  procurement: 'Не применимо' as Applicability,
+  scoringCategory: 1,
+  scoringWeight: 1,
 };
 
 const emptyTechForm = {
@@ -265,7 +301,7 @@ const Index = () => {
   function openReqDetail(req: Requirement) { setSelectedReq(req); setReqView('detail'); }
   function openReqCreate() { setReqForm({ ...emptyReqForm, tags: [] }); setTagInput(''); setReqView('create'); }
   function openReqEdit(req: Requirement) {
-    setReqForm({ title: req.title, description: req.description, category: req.category, priority: req.priority, status: req.status, tags: [...req.tags], author: req.author, version: req.version });
+    setReqForm({ title: req.title, description: req.description, category: req.category, priority: req.priority, status: req.status, tags: [...req.tags], author: req.author, version: req.version, environments: [...req.environments], appStages: [...req.appStages], externalWithIod: req.externalWithIod, externalWithoutIod: req.externalWithoutIod, internalWithIod: req.internalWithIod, internalWithoutIod: req.internalWithoutIod, procurement: req.procurement, scoringCategory: req.scoringCategory, scoringWeight: req.scoringWeight });
     setSelectedReq(req); setTagInput(''); setReqView('edit');
   }
   function saveReqCreate() {
@@ -769,6 +805,95 @@ const Index = () => {
                       </div>
                     )}
                   </div>
+
+                  {/* Среда и стадия применения */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">Среда применения</label>
+                      <div className="space-y-2">
+                        {(['Prod', 'ProdLike', 'Stage', 'Test', 'Dev'] as EnvType[]).map(env => (
+                          <label key={env} className="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" checked={reqForm.environments.includes(env)}
+                              onChange={e => setReqForm(f => ({ ...f, environments: e.target.checked ? [...f.environments, env] : f.environments.filter(x => x !== env) }))}
+                              className="w-4 h-4 rounded border-white/20 bg-white/5 accent-cyan-500 cursor-pointer" />
+                            <span className="text-sm text-foreground group-hover:text-cyan-400 transition-colors">{env}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">Стадия применения</label>
+                      <div className="space-y-2">
+                        {(['Стадия Дизайна', 'Стадия Деплоя', 'Стадия Рантайма'] as AppStage[]).map(stage => (
+                          <label key={stage} className="flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" checked={reqForm.appStages.includes(stage)}
+                              onChange={e => setReqForm(f => ({ ...f, appStages: e.target.checked ? [...f.appStages, stage] : f.appStages.filter(x => x !== stage) }))}
+                              className="w-4 h-4 rounded border-white/20 bg-white/5 accent-cyan-500 cursor-pointer" />
+                            <span className="text-sm text-foreground group-hover:text-cyan-400 transition-colors">{stage}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Внешнее и внутреннее взаимодействие */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {[
+                      { label: 'Внешнее взаимодействие', withIodKey: 'externalWithIod', withoutIodKey: 'externalWithoutIod' },
+                      { label: 'Внутреннее взаимодействие', withIodKey: 'internalWithIod', withoutIodKey: 'internalWithoutIod' },
+                    ].map(({ label, withIodKey, withoutIodKey }) => (
+                      <div key={label}>
+                        <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">{label}</label>
+                        <div className="space-y-3">
+                          <div>
+                            <span className="text-xs text-muted-foreground/70 mb-1.5 block">с ИОД</span>
+                            <select value={reqForm[withIodKey as keyof typeof reqForm] as string}
+                              onChange={e => setReqForm(f => ({ ...f, [withIodKey]: e.target.value as InteractionLevel }))}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-cyan-500/50 cursor-pointer text-sm">
+                              {(['Обязательный', 'Рекомендуется', 'Не требуется'] as InteractionLevel[]).map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground/70 mb-1.5 block">Без ИОД</span>
+                            <select value={reqForm[withoutIodKey as keyof typeof reqForm] as string}
+                              onChange={e => setReqForm(f => ({ ...f, [withoutIodKey]: e.target.value as InteractionLevel }))}
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-cyan-500/50 cursor-pointer text-sm">
+                              {(['Обязательный', 'Рекомендуется', 'Не требуется'] as InteractionLevel[]).map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Закупки и Скорринг */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">Закупки</label>
+                      <select value={reqForm.procurement} onChange={e => setReqForm(f => ({ ...f, procurement: e.target.value as Applicability }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-cyan-500/50 cursor-pointer">
+                        {(['Применимо', 'Не применимо'] as Applicability[]).map(v => <option key={v} value={v}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">Скорринг баллы</label>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-xs text-muted-foreground/70 mb-1.5 block">Оценка Категории (1–4): <span className="text-cyan-400 font-medium">{reqForm.scoringCategory}</span></span>
+                          <input type="range" min={1} max={4} value={reqForm.scoringCategory}
+                            onChange={e => setReqForm(f => ({ ...f, scoringCategory: Number(e.target.value) }))}
+                            className="w-full accent-cyan-500 cursor-pointer" />
+                        </div>
+                        <div>
+                          <span className="text-xs text-muted-foreground/70 mb-1.5 block">Оценка Веса (1–10): <span className="text-violet-400 font-medium">{reqForm.scoringWeight}</span></span>
+                          <input type="range" min={1} max={10} value={reqForm.scoringWeight}
+                            onChange={e => setReqForm(f => ({ ...f, scoringWeight: Number(e.target.value) }))}
+                            className="w-full accent-violet-500 cursor-pointer" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-3 pt-2">
                     <button onClick={reqView === 'create' ? saveReqCreate : saveReqEdit}
                       disabled={!reqForm.title.trim() || !reqForm.description.trim()}

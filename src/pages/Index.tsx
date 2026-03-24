@@ -2,11 +2,12 @@ import { useState, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 import {
   Tab, Technology, Requirement,
-  MOCK_REQUIREMENTS, MOCK_TECHNOLOGIES, MOCK_TECH_DOMAINS, MOCK_DOMAINS,
+  MOCK_REQUIREMENTS, MOCK_TECHNOLOGIES, MOCK_TECH_DOMAINS, MOCK_DOMAINS, MOCK_SOLUTIONS,
 } from '@/types';
 import RequirementsTab, { RequirementsTabHandle } from '@/components/tabs/RequirementsTab';
 import TechnologiesTab, { TechnologiesTabHandle } from '@/components/tabs/TechnologiesTab';
 import DomainsTab, { DomainsTabHandle } from '@/components/tabs/DomainsTab';
+import SolutionsTab, { SolutionsTabHandle } from '@/components/tabs/SolutionsTab';
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>('domains');
@@ -16,10 +17,12 @@ const Index = () => {
   const [technologies, setTechnologies] = useState(MOCK_TECHNOLOGIES);
   const [domains, setDomains] = useState(MOCK_DOMAINS);
   const [techDomains, setTechDomains] = useState(MOCK_TECH_DOMAINS);
+  const [solutions, setSolutions] = useState(MOCK_SOLUTIONS);
 
   const reqTabRef = useRef<RequirementsTabHandle>(null);
   const techTabRef = useRef<TechnologiesTabHandle>(null);
   const domainsTabRef = useRef<DomainsTabHandle>(null);
+  const solutionsTabRef = useRef<SolutionsTabHandle>(null);
 
   function navigateToTech(tech: Technology) {
     setTab('technologies');
@@ -39,6 +42,7 @@ const Index = () => {
   function goBack() {
     if (tab === 'requirements') reqTabRef.current?.goBack();
     else if (tab === 'technologies') techTabRef.current?.goBack();
+    else if (tab === 'solutions') solutionsTabRef.current?.goBack();
     else if (tab === 'domains') domainsTabRef.current?.goBackDomain();
     else domainsTabRef.current?.goBackTechDomain();
     setIsOnSubpage(false);
@@ -47,6 +51,7 @@ const Index = () => {
   function openCreate() {
     if (tab === 'requirements') reqTabRef.current?.openCreate();
     else if (tab === 'technologies') techTabRef.current?.openCreate();
+    else if (tab === 'solutions') solutionsTabRef.current?.openCreate();
     else if (tab === 'domains') domainsTabRef.current?.openDomainCreate();
     else domainsTabRef.current?.openTechDomainCreate();
     setIsOnSubpage(true);
@@ -55,10 +60,23 @@ const Index = () => {
   function handleLogoClick() {
     reqTabRef.current?.goBack();
     techTabRef.current?.goBack();
+    solutionsTabRef.current?.goBack();
     domainsTabRef.current?.goBackDomain();
     domainsTabRef.current?.goBackTechDomain();
     setIsOnSubpage(false);
   }
+
+  const createLabel = tab === 'requirements' ? 'Новое требование'
+    : tab === 'technologies' ? 'Новая технология'
+    : tab === 'solutions' ? 'Новое решение'
+    : tab === 'domains' ? 'Новый домен'
+    : 'Новый тех. домен';
+
+  const createGradient = tab === 'requirements' ? 'from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 shadow-cyan-500/20'
+    : tab === 'technologies' ? 'from-violet-500 to-pink-500 hover:from-violet-400 hover:to-pink-400 shadow-violet-500/20'
+    : tab === 'solutions' ? 'from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-emerald-500/20'
+    : tab === 'domains' ? 'from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-emerald-500/20'
+    : 'from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 shadow-violet-500/20';
 
   return (
     <div className="min-h-screen bg-background mesh-bg font-golos">
@@ -83,16 +101,9 @@ const Index = () => {
               </button>
             )}
             {!isOnSubpage && (
-              <button onClick={openCreate} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all shadow-lg ${
-                tab === 'requirements' ? 'bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 shadow-cyan-500/20' :
-                tab === 'technologies' ? 'bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-400 hover:to-pink-400 shadow-violet-500/20' :
-                tab === 'domains' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 shadow-emerald-500/20' :
-                'bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 shadow-violet-500/20'
-              }`}>
+              <button onClick={openCreate} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all shadow-lg bg-gradient-to-r ${createGradient}`}>
                 <Icon name="Plus" size={16} />
-                {tab === 'requirements' ? 'Новое требование' :
-                 tab === 'technologies' ? 'Новая технология' :
-                 tab === 'domains' ? 'Новый домен' : 'Новый тех. домен'}
+                {createLabel}
               </button>
             )}
           </div>
@@ -106,6 +117,7 @@ const Index = () => {
               { key: 'techdomains', label: 'Тех. домены', icon: 'Server', count: techDomains.length },
               { key: 'requirements', label: 'Требования', icon: 'ListChecks', count: requirements.length },
               { key: 'technologies', label: 'Технологии', icon: 'Cpu', count: technologies.length },
+              { key: 'solutions', label: 'Тех. решения', icon: 'LayoutGrid', count: solutions.length },
             ] as { key: Tab; label: string; icon: string; count: number }[]).map(t => (
               <button
                 key={t.key}
@@ -144,6 +156,16 @@ const Index = () => {
             setTechnologies={setTechnologies}
             requirements={requirements}
             onNavigateToReq={navigateToReq}
+          />
+        )}
+        {tab === 'solutions' && (
+          <SolutionsTab
+            ref={solutionsTabRef}
+            solutions={solutions}
+            setSolutions={setSolutions}
+            technologies={technologies}
+            requirements={requirements}
+            onNavigateToTech={navigateToTech}
           />
         )}
         {(tab === 'domains' || tab === 'techdomains') && (

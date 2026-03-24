@@ -260,6 +260,86 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
                 </div>
               </div>
 
+              {/* Среда и стадия применения */}
+              <div className="glass rounded-2xl p-6">
+                <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Среда применения</h2>
+                <div className="flex flex-wrap gap-2">
+                  {selectedReq.environments.length === 0
+                    ? <span className="text-sm text-muted-foreground">Не указана</span>
+                    : selectedReq.environments.map(env => (
+                      <span key={env} className="text-xs px-2.5 py-1 glass rounded-lg border border-cyan-500/20 text-cyan-400">{env}</span>
+                    ))}
+                </div>
+              </div>
+
+              <div className="glass rounded-2xl p-6">
+                <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Стадия применения</h2>
+                <div className="flex flex-wrap gap-2">
+                  {selectedReq.appStages.length === 0
+                    ? <span className="text-sm text-muted-foreground">Не указана</span>
+                    : selectedReq.appStages.map(stage => (
+                      <span key={stage} className="text-xs px-2.5 py-1 glass rounded-lg border border-violet-500/20 text-violet-400">{stage}</span>
+                    ))}
+                </div>
+              </div>
+
+              {/* Взаимодействие */}
+              <div className="glass rounded-2xl p-6 md:col-span-2">
+                <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Взаимодействие</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Внешнее с ИОД', value: selectedReq.externalWithIod },
+                    { label: 'Внешнее без ИОД', value: selectedReq.externalWithoutIod },
+                    { label: 'Внутреннее с ИОД', value: selectedReq.internalWithIod },
+                    { label: 'Внутреннее без ИОД', value: selectedReq.internalWithoutIod },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <span className="block text-xs text-muted-foreground/70 mb-1.5">{item.label}</span>
+                      <span className={`text-sm font-medium ${
+                        item.value === 'Обязательный' ? 'text-red-400' :
+                        item.value === 'Рекомендуется' ? 'text-yellow-400' : 'text-muted-foreground'
+                      }`}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Закупки и скорринг */}
+              <div className="glass rounded-2xl p-6">
+                <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Закупки</h2>
+                <span className={`text-sm font-medium ${selectedReq.procurement === 'Применимо' ? 'text-cyan-400' : 'text-muted-foreground'}`}>
+                  {selectedReq.procurement}
+                </span>
+              </div>
+
+              <div className="glass rounded-2xl p-6">
+                <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Скорринг баллы</h2>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Оценка Категории</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1">
+                        {[1,2,3,4].map(n => (
+                          <div key={n} className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${n <= selectedReq.scoringCategory ? 'bg-cyan-500/30 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-muted-foreground/30 border border-white/10'}`}>{n}</div>
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-cyan-400">{selectedReq.scoringCategory}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Оценка Веса</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-0.5">
+                        {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                          <div key={n} className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold ${n <= selectedReq.scoringWeight ? 'bg-violet-500/30 text-violet-400 border border-violet-500/40' : 'bg-white/5 text-muted-foreground/30 border border-white/10'}`}>{n}</div>
+                        ))}
+                      </div>
+                      <span className="text-sm font-medium text-violet-400">{selectedReq.scoringWeight}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {(() => {
                 const linked = technologies.filter(t => t.requirementIds.includes(selectedReq.id));
                 return linked.length > 0 ? (

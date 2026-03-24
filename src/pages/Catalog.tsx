@@ -10,7 +10,7 @@ import {
   ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG,
 } from '@/types';
 
-type CatalogTab = 'architectures' | 'solutions' | 'technologies';
+
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -355,15 +355,8 @@ function TechCard({ tech, onClick }: { tech: Technology; onClick: () => void }) 
 
 // ─── Главная страница Каталог ─────────────────────────────────────────────────
 
-const TAB_CONFIG: Record<CatalogTab, { label: string; icon: string; color: string; accent: string }> = {
-  architectures: { label: 'Архитектуры', icon: 'Blocks',      color: 'text-pink-400',  accent: 'border-pink-500/50 bg-pink-500/10' },
-  solutions:     { label: 'Решения',      icon: 'LayoutGrid',  color: 'text-blue-400',  accent: 'border-blue-500/50 bg-blue-500/10' },
-  technologies:  { label: 'Технологии',   icon: 'Cpu',         color: 'text-cyan-400',  accent: 'border-cyan-500/50 bg-cyan-500/10' },
-};
-
 export default function Catalog() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<CatalogTab>('architectures');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -377,24 +370,31 @@ export default function Catalog() {
   const [selectedSol, setSelectedSol] = useState<TechnicalSolution | null>(null);
   const [selectedTech, setSelectedTech] = useState<Technology | null>(null);
 
-  const approvedArchitectures = useMemo(() =>
-    architectures.filter(a => statusFilter === 'all' ? true : a.status === statusFilter)
-      .filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.description.toLowerCase().includes(search.toLowerCase()) || a.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))),
-    [architectures, search, statusFilter]
+  const q = search.toLowerCase();
+
+  const filteredArchitectures = useMemo(() =>
+    architectures
+      .filter(a => statusFilter === 'all' || a.status === statusFilter)
+      .filter(a => !q || a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q) || a.tags.some(t => t.toLowerCase().includes(q))),
+    [architectures, q, statusFilter]
   );
 
   const filteredSolutions = useMemo(() =>
-    solutions.filter(s => statusFilter === 'all' ? true : s.status === statusFilter)
-      .filter(s => !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.description.toLowerCase().includes(search.toLowerCase()) || s.tags.some(t => t.toLowerCase().includes(search.toLowerCase()))),
-    [solutions, search, statusFilter]
+    solutions
+      .filter(s => statusFilter === 'all' || s.status === statusFilter)
+      .filter(s => !q || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q) || s.tags.some(t => t.toLowerCase().includes(q))),
+    [solutions, q, statusFilter]
   );
 
   const filteredTechnologies = useMemo(() =>
-    technologies.filter(t => !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase())),
-    [technologies, search]
+    technologies.filter(t => !q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)),
+    [technologies, q]
   );
 
-  const statusOptions = tab === 'technologies' ? [] : [
+  const totalCount = filteredArchitectures.length + filteredSolutions.length + filteredTechnologies.length;
+  const isEmpty = totalCount === 0;
+
+  const statusOptions = [
     { value: 'all', label: 'Все статусы' },
     { value: 'approved', label: 'Утверждено' },
     { value: 'review', label: 'На ревью' },
@@ -402,18 +402,12 @@ export default function Catalog() {
     { value: 'archived', label: 'В архиве' },
   ];
 
-  const counts = {
-    architectures: approvedArchitectures.length,
-    solutions: filteredSolutions.length,
-    technologies: filteredTechnologies.length,
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
       <header className="border-b border-white/10 bg-background/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <button onClick={() => navigate('/')} className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
               <Icon name="ArrowLeft" size={16} className="text-muted-foreground" />
             </button>
@@ -422,19 +416,19 @@ export default function Catalog() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-foreground leading-tight">Каталог</h1>
-              <p className="text-xs text-muted-foreground">Шаблоны и технические решения</p>
+              <p className="text-xs text-muted-foreground">{totalCount} элементов</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Поиск */}
-            <div className="relative">
+          {/* Поиск + фильтр */}
+          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+            <div className="relative flex-1">
               <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Поиск..."
-                className="pl-8 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-white/20 w-52"
+                placeholder="Поиск по архитектурам, решениям и технологиям..."
+                className="w-full pl-9 pr-8 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-white/25 transition-colors"
               />
               {search && (
                 <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -442,93 +436,73 @@ export default function Catalog() {
                 </button>
               )}
             </div>
-
-            {/* Фильтр статуса */}
-            {statusOptions.length > 0 && (
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-white/20"
-              >
-                {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-            )}
-          </div>
-        </div>
-
-        {/* Вкладки */}
-        <div className="max-w-7xl mx-auto px-6 pb-0 flex gap-1">
-          {(Object.entries(TAB_CONFIG) as [CatalogTab, typeof TAB_CONFIG[CatalogTab]][]).map(([key, cfg]) => (
-            <button
-              key={key}
-              onClick={() => { setTab(key); setStatusFilter('all'); }}
-              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${tab === key ? `${cfg.color} border-current` : 'text-muted-foreground border-transparent hover:text-foreground'}`}
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-white/20 flex-shrink-0"
             >
-              <Icon name={cfg.icon} size={15} />
-              {cfg.label}
-              <span className={`text-xs px-1.5 py-0.5 rounded-md font-mono ${tab === key ? 'bg-white/10' : 'bg-white/5'}`}>
-                {counts[key]}
-              </span>
-            </button>
-          ))}
+              {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
         </div>
       </header>
 
-      {/* Контент */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-
-        {/* Архитектуры */}
-        {tab === 'architectures' && (
-          <div className="animate-fade-in">
-            {approvedArchitectures.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                <Icon name="Blocks" size={40} className="opacity-20" />
-                <p>Нет архитектур по вашему запросу</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {approvedArchitectures.map(arch => (
-                  <ArchCard key={arch.id} arch={arch} techDomains={techDomains} onClick={() => setSelectedArch(arch)} />
-                ))}
-              </div>
-            )}
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-10">
+        {isEmpty ? (
+          <div className="flex flex-col items-center justify-center py-32 text-muted-foreground gap-3">
+            <Icon name="SearchX" size={40} className="opacity-20" />
+            <p>Ничего не найдено по вашему запросу</p>
+            <button onClick={() => { setSearch(''); setStatusFilter('all'); }} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+              Сбросить фильтры
+            </button>
           </div>
-        )}
-
-        {/* Решения */}
-        {tab === 'solutions' && (
-          <div className="animate-fade-in">
-            {filteredSolutions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                <Icon name="LayoutGrid" size={40} className="opacity-20" />
-                <p>Нет решений по вашему запросу</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredSolutions.map(sol => (
-                  <SolutionCard key={sol.id} solution={sol} onClick={() => setSelectedSol(sol)} />
-                ))}
-              </div>
+        ) : (
+          <>
+            {filteredArchitectures.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon name="Blocks" size={16} className="text-pink-400" />
+                  <h2 className="text-sm font-semibold text-pink-400">Типовые архитектуры</h2>
+                  <span className="text-xs text-muted-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">{filteredArchitectures.length}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredArchitectures.map(arch => (
+                    <ArchCard key={arch.id} arch={arch} techDomains={techDomains} onClick={() => setSelectedArch(arch)} />
+                  ))}
+                </div>
+              </section>
             )}
-          </div>
-        )}
 
-        {/* Технологии */}
-        {tab === 'technologies' && (
-          <div className="animate-fade-in">
-            {filteredTechnologies.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">
-                <Icon name="Cpu" size={40} className="opacity-20" />
-                <p>Нет технологий по вашему запросу</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredTechnologies.map(tech => (
-                  <TechCard key={tech.id} tech={tech} onClick={() => setSelectedTech(tech)} />
-                ))}
-              </div>
+            {filteredSolutions.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon name="LayoutGrid" size={16} className="text-blue-400" />
+                  <h2 className="text-sm font-semibold text-blue-400">Технические решения</h2>
+                  <span className="text-xs text-muted-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">{filteredSolutions.length}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredSolutions.map(sol => (
+                    <SolutionCard key={sol.id} solution={sol} onClick={() => setSelectedSol(sol)} />
+                  ))}
+                </div>
+              </section>
             )}
-          </div>
+
+            {filteredTechnologies.length > 0 && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <Icon name="Cpu" size={16} className="text-cyan-400" />
+                  <h2 className="text-sm font-semibold text-cyan-400">Технологии</h2>
+                  <span className="text-xs text-muted-foreground bg-white/5 border border-white/10 px-2 py-0.5 rounded-md">{filteredTechnologies.length}</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredTechnologies.map(tech => (
+                    <TechCard key={tech.id} tech={tech} onClick={() => setSelectedTech(tech)} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 

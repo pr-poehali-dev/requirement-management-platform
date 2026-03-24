@@ -455,6 +455,11 @@ const Index = () => {
                 <Icon name="Plus" size={16} />Новый домен
               </button>
             )}
+            {!isOnSubpage && tab === 'techdomains' && (
+              <button onClick={openTechDomainCreate} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl text-sm font-medium text-white hover:from-violet-400 hover:to-purple-400 transition-all shadow-lg shadow-violet-500/20">
+                <Icon name="Plus" size={16} />Новый тех. домен
+              </button>
+            )}
           </div>
         </div>
 

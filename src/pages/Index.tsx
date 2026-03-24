@@ -210,7 +210,7 @@ type TechDomainView = 'list' | 'detail' | 'create' | 'edit';
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Index = () => {
-  const [tab, setTab] = useState<Tab>('requirements');
+  const [tab, setTab] = useState<Tab>('domains');
 
   // Tech Domains state
   const [techDomains, setTechDomains] = useState<TechDomain[]>(MOCK_TECH_DOMAINS);

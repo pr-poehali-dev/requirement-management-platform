@@ -467,10 +467,10 @@ const Index = () => {
         {!isOnSubpage && (
           <div className="max-w-7xl mx-auto px-6 pb-0 flex gap-1">
             {([
-              { key: 'requirements', label: 'Требования', icon: 'ListChecks', count: requirements.length },
-              { key: 'technologies', label: 'Технологии', icon: 'Cpu', count: technologies.length },
               { key: 'domains', label: 'Орг. домены', icon: 'Building2', count: domains.length },
               { key: 'techdomains', label: 'Тех. домены', icon: 'Server', count: techDomains.length },
+              { key: 'requirements', label: 'Требования', icon: 'ListChecks', count: requirements.length },
+              { key: 'technologies', label: 'Технологии', icon: 'Cpu', count: technologies.length },
             ] as { key: Tab; label: string; icon: string; count: number }[]).map(t => (
               <button
                 key={t.key}

@@ -2,8 +2,181 @@ import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import Icon from '@/components/ui/icon';
 import {
   Technology, Requirement, MermaidScheme, TechView,
-  PRIORITY_CONFIG, emptyTechForm, delayClass,
+  PRIORITY_CONFIG, CATEGORY_CONFIG, STATUS_CONFIG, emptyTechForm, delayClass,
 } from '@/types';
+
+// ─── LinkedRequirements ──────────────────────────────────────────────────────
+
+function Badge({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs border ${className ?? ''}`}>
+      {children}
+    </span>
+  );
+}
+
+interface LRProps {
+  requirementIds: string[];
+  requirements: Requirement[];
+  onNavigateToReq: (req: Requirement) => void;
+}
+
+function LinkedRequirements({ requirementIds, requirements, onNavigateToReq }: LRProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const interactionLabel: Record<string, string> = {
+    'Обязательный': 'Обяз.',
+    'Рекомендуется': 'Рек.',
+    'Не требуется': '—',
+  };
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">
+        Привязанные требования <span className="text-cyan-400">({requirementIds.length})</span>
+      </h2>
+      {requirementIds.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Требования не привязаны</p>
+      ) : (
+        <div className="space-y-2">
+          {requirementIds.map(reqId => {
+            const req = requirements.find(r => r.id === reqId);
+            if (!req) return null;
+            const isOpen = expandedId === req.id;
+            const catCfg = CATEGORY_CONFIG[req.category];
+            const statusCfg = STATUS_CONFIG[req.status];
+            return (
+              <div key={reqId} className="glass rounded-xl border border-white/5 overflow-hidden transition-all">
+                {/* Header row */}
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <span className="text-xs font-oswald text-muted-foreground tracking-widest shrink-0 w-20">{req.id}</span>
+                  <span className="text-sm text-foreground flex-1 min-w-0 truncate font-medium">{req.title}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge className={PRIORITY_CONFIG[req.priority].color}>
+                      {PRIORITY_CONFIG[req.priority].label}
+                    </Badge>
+                    <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
+                    <button
+                      onClick={() => setExpandedId(isOpen ? null : req.id)}
+                      className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                      title={isOpen ? 'Свернуть' : 'Развернуть детали'}
+                    >
+                      <Icon name={isOpen ? 'ChevronUp' : 'ChevronDown'} size={14} />
+                    </button>
+                    <button
+                      onClick={() => onNavigateToReq(req)}
+                      className="p-1 rounded-lg hover:bg-cyan-500/10 text-muted-foreground hover:text-cyan-400 transition-all"
+                      title="Открыть требование"
+                    >
+                      <Icon name="ExternalLink" size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Expanded details */}
+                {isOpen && (
+                  <div className="border-t border-white/5 px-4 py-4 space-y-4 bg-white/[0.02]">
+                    {/* Description */}
+                    {req.description && (
+                      <div>
+                        <p className="text-xs text-muted-foreground font-oswald uppercase tracking-wider mb-1">Описание</p>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{req.description}</p>
+                      </div>
+                    )}
+
+                    {/* Row 1: Category, Version, Scoring */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Категория</p>
+                        <span className={`text-xs font-medium ${catCfg.color} flex items-center gap-1`}>
+                          <Icon name={catCfg.icon as string} size={12} />
+                          {catCfg.label}
+                        </span>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Версия требования</p>
+                        <span className="text-xs text-foreground font-mono">{req.version || '—'}</span>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Скор. категория</p>
+                        <span className="text-xs text-foreground font-mono">{req.scoringCategory ?? '—'}</span>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Скор. вес</p>
+                        <span className="text-xs text-foreground font-mono">{req.scoringWeight ?? '—'}</span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Environments & Stages */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-2">Среда применения</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(req.environments ?? []).length > 0
+                            ? req.environments.map(e => (
+                                <Badge key={e} className="text-cyan-400 border-cyan-400/20 bg-cyan-400/5">{e}</Badge>
+                              ))
+                            : <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-2">Стадии приложения</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(req.appStages ?? []).length > 0
+                            ? req.appStages.map(s => (
+                                <Badge key={s} className="text-violet-400 border-violet-400/20 bg-violet-400/5">{s}</Badge>
+                              ))
+                            : <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Interactions */}
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-3">Взаимодействия</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {[
+                          { label: 'Внутр. с ИОД', value: req.internalWithIod },
+                          { label: 'Внутр. без ИОД', value: req.internalWithoutIod },
+                          { label: 'Внешн. с ИОД', value: req.externalWithIod },
+                          { label: 'Внешн. без ИОД', value: req.externalWithoutIod },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="text-center">
+                            <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                            <span className={`text-xs font-medium ${
+                              value === 'Обязательный' ? 'text-red-400' :
+                              value === 'Рекомендуется' ? 'text-yellow-400' : 'text-muted-foreground'
+                            }`}>
+                              {interactionLabel[value] ?? value ?? '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Row 4: Procurement */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">Закупки:</span>
+                      <Badge className={
+                        req.procurement === 'Применимо'
+                          ? 'text-green-400 border-green-400/20 bg-green-400/5'
+                          : 'text-slate-400 border-slate-400/20 bg-slate-400/5'
+                      }>
+                        {req.procurement ?? '—'}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TechnologiesTab ──────────────────────────────────────────────────────────
 
 export interface TechnologiesTabHandle {
   isOnSubpage: boolean;
@@ -226,32 +399,11 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
             </div>
 
             {/* Linked requirements */}
-            <div className="glass rounded-2xl p-6">
-              <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">
-                Привязанные требования <span className="text-cyan-400">({selectedTech.requirementIds.length})</span>
-              </h2>
-              {selectedTech.requirementIds.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Требования не привязаны</p>
-              ) : (
-                <div className="space-y-2">
-                  {selectedTech.requirementIds.map(reqId => {
-                    const req = requirements.find(r => r.id === reqId);
-                    if (!req) return null;
-                    return (
-                      <button key={reqId} onClick={() => onNavigateToReq(req)}
-                        className="w-full flex items-center gap-3 p-3 glass rounded-xl text-left hover:border-cyan-500/30 transition-all">
-                        <span className="text-xs font-oswald text-muted-foreground tracking-widest shrink-0">{req.id}</span>
-                        <span className="text-sm text-foreground flex-1 truncate">{req.title}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border ${PRIORITY_CONFIG[req.priority].color} shrink-0`}>
-                          {PRIORITY_CONFIG[req.priority].label}
-                        </span>
-                        <Icon name="ChevronRight" size={14} className="text-muted-foreground shrink-0" />
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <LinkedRequirements
+              requirementIds={selectedTech.requirementIds}
+              requirements={requirements}
+              onNavigateToReq={onNavigateToReq}
+            />
           </div>
         )}
 

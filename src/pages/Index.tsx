@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import Icon from '@/components/ui/icon';
 import {
   Tab, Technology, Requirement,
@@ -16,12 +17,12 @@ const Index = () => {
   const [tab, setTab] = useState<Tab>('domains');
   const [isOnSubpage, setIsOnSubpage] = useState(false);
 
-  const [requirements, setRequirements] = useState(MOCK_REQUIREMENTS);
-  const [technologies, setTechnologies] = useState(MOCK_TECHNOLOGIES);
-  const [domains, setDomains] = useState(MOCK_DOMAINS);
-  const [techDomains, setTechDomains] = useState(MOCK_TECH_DOMAINS);
-  const [solutions, setSolutions] = useState(MOCK_SOLUTIONS);
-  const [architectures, setArchitectures] = useState(MOCK_ARCHITECTURES);
+  const [requirements, setRequirements] = useLocalStorage('reqflow_requirements', MOCK_REQUIREMENTS);
+  const [technologies, setTechnologies] = useLocalStorage('reqflow_technologies', MOCK_TECHNOLOGIES);
+  const [domains, setDomains] = useLocalStorage('reqflow_domains', MOCK_DOMAINS);
+  const [techDomains, setTechDomains] = useLocalStorage('reqflow_techDomains', MOCK_TECH_DOMAINS);
+  const [solutions, setSolutions] = useLocalStorage('reqflow_solutions', MOCK_SOLUTIONS);
+  const [architectures, setArchitectures] = useLocalStorage('reqflow_architectures', MOCK_ARCHITECTURES);
   const [ioOpen, setIoOpen] = useState(false);
 
   const reqTabRef = useRef<RequirementsTabHandle>(null);

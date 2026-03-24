@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import {
   MOCK_REQUIREMENTS, MOCK_TECHNOLOGIES, MOCK_SOLUTIONS, MOCK_ARCHITECTURES, MOCK_TECH_DOMAINS,
   Technology, TechnicalSolution, TypicalArchitecture, TechDomain, Requirement,
-  ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG,
+  ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG, PRIORITY_CONFIG,
 } from '@/types';
 
 
@@ -210,6 +210,45 @@ function SolutionDetail({ solution, technologies, onClose, onOpenTech }: {
   );
 }
 
+function ReqExpandCard({ req }: { req: Requirement }) {
+  const [open, setOpen] = useState(false);
+  const prio = PRIORITY_CONFIG[req.priority] ?? { label: req.priority, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
+
+  return (
+    <div className="rounded-xl border border-white/10 overflow-hidden transition-all">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-start justify-between gap-3 p-3 bg-white/5 hover:bg-amber-500/5 hover:border-amber-500/20 transition-all group text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground group-hover:text-amber-300 transition-colors leading-snug">{req.title}</p>
+          {!open && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.description}</p>}
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+          <Badge className={prio.color}>{prio.label}</Badge>
+          <Icon name={open ? 'ChevronUp' : 'ChevronDown'} size={14} className="text-muted-foreground group-hover:text-amber-400 transition-colors" />
+        </div>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-2 bg-white/3 border-t border-white/10 space-y-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">{req.description}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {req.tags.map(t => <Badge key={t} className="text-slate-400 bg-slate-400/10 border-slate-400/20">#{t}</Badge>)}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground border-t border-white/10 pt-2">
+            <span>Статус: <span className="text-foreground">{req.status}</span></span>
+            <span>Версия: <span className="text-foreground">v{req.version}</span></span>
+            <span>Автор: <span className="text-foreground">{req.author}</span></span>
+            {req.environments.length > 0 && (
+              <span>Среды: <span className="text-foreground">{req.environments.join(', ')}</span></span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TechDetail({ tech, requirements, onClose }: {
   tech: Technology;
   requirements: Requirement[];
@@ -272,13 +311,7 @@ function TechDetail({ tech, requirements, onClose }: {
               </h3>
               <div className="space-y-2">
                 {linked.map(req => (
-                  <div key={req.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                    <p className="text-sm font-medium text-foreground">{req.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{req.description}</p>
-                    <div className="flex gap-2 mt-2">
-                      {req.tags.slice(0, 3).map(t => <Badge key={t} className="text-slate-400 bg-slate-400/10 border-slate-400/20">#{t}</Badge>)}
-                    </div>
-                  </div>
+                  <ReqExpandCard key={req.id} req={req} />
                 ))}
               </div>
             </div>

@@ -4,6 +4,8 @@ import {
   Tab, Technology, Requirement,
   MOCK_REQUIREMENTS, MOCK_TECHNOLOGIES, MOCK_TECH_DOMAINS, MOCK_DOMAINS, MOCK_SOLUTIONS, MOCK_ARCHITECTURES,
 } from '@/types';
+import DataIOModal from '@/components/DataIOModal';
+import { AppData } from '@/lib/dataIO';
 import RequirementsTab, { RequirementsTabHandle } from '@/components/tabs/RequirementsTab';
 import TechnologiesTab, { TechnologiesTabHandle } from '@/components/tabs/TechnologiesTab';
 import DomainsTab, { DomainsTabHandle } from '@/components/tabs/DomainsTab';
@@ -20,6 +22,7 @@ const Index = () => {
   const [techDomains, setTechDomains] = useState(MOCK_TECH_DOMAINS);
   const [solutions, setSolutions] = useState(MOCK_SOLUTIONS);
   const [architectures, setArchitectures] = useState(MOCK_ARCHITECTURES);
+  const [ioOpen, setIoOpen] = useState(false);
 
   const reqTabRef = useRef<RequirementsTabHandle>(null);
   const techTabRef = useRef<TechnologiesTabHandle>(null);
@@ -109,10 +112,16 @@ const Index = () => {
               </button>
             )}
             {!isOnSubpage && (
-              <button onClick={openCreate} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all shadow-lg bg-gradient-to-r ${createGradient}`}>
-                <Icon name="Plus" size={16} />
-                {createLabel}
-              </button>
+              <>
+                <button onClick={() => setIoOpen(true)} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/20 transition-all">
+                  <Icon name="ArrowLeftRight" size={15} />
+                  Импорт / Экспорт
+                </button>
+                <button onClick={openCreate} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium text-white transition-all shadow-lg bg-gradient-to-r ${createGradient}`}>
+                  <Icon name="Plus" size={16} />
+                  {createLabel}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -199,6 +208,20 @@ const Index = () => {
           />
         )}
       </main>
+
+      <DataIOModal
+        open={ioOpen}
+        onClose={() => setIoOpen(false)}
+        data={{ requirements, technologies, domains, techDomains, solutions, architectures }}
+        onImport={(imported: Partial<AppData>) => {
+          if (imported.requirements) setRequirements(imported.requirements);
+          if (imported.technologies) setTechnologies(imported.technologies);
+          if (imported.domains) setDomains(imported.domains);
+          if (imported.techDomains) setTechDomains(imported.techDomains);
+          if (imported.solutions) setSolutions(imported.solutions);
+          if (imported.architectures) setArchitectures(imported.architectures);
+        }}
+      />
     </div>
   );
 };

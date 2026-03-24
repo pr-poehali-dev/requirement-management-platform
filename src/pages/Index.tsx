@@ -38,6 +38,18 @@ interface OrgDomain {
   updatedAt: string;
 }
 
+interface TechDomain {
+  id: string;
+  name: string;
+  version: string;
+  owner: string;
+  status: DomainStatus;
+  description: string;
+  orgDomainIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Requirement {
   id: string;
   title: string;
@@ -147,6 +159,25 @@ const emptyDomainForm = {
   name: '', version: '1.0', owner: '', status: 'draft' as DomainStatus, description: '',
 };
 
+const emptyTechDomainForm = {
+  name: '', version: '1.0', owner: '', status: 'draft' as DomainStatus, description: '', orgDomainIds: [] as string[],
+};
+
+const MOCK_TECH_DOMAINS: TechDomain[] = [
+  {
+    id: 'TDOM-001', name: 'Сервис авторизации', version: '3.1', owner: 'Дмитрий Орлов',
+    status: 'active', description: 'Технический домен, обеспечивающий аутентификацию и авторизацию пользователей через OAuth 2.0 и JWT.',
+    orgDomainIds: ['DOM-001'],
+    createdAt: '2024-01-15', updatedAt: '2024-02-20',
+  },
+  {
+    id: 'TDOM-002', name: 'Платёжный процессор', version: '2.0', owner: 'Алексей Петров',
+    status: 'review', description: 'Обработка и маршрутизация платёжных транзакций, интеграция с внешними шлюзами.',
+    orgDomainIds: ['DOM-002'],
+    createdAt: '2024-01-22', updatedAt: '2024-02-25',
+  },
+];
+
 const DOMAIN_STATUS_CONFIG: Record<DomainStatus, { label: string; color: string }> = {
   active: { label: 'Активен', color: 'text-green-400 bg-green-400/10 border-green-400/30' },
   draft: { label: 'Черновик', color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' },
@@ -169,15 +200,22 @@ const MOCK_DOMAINS: OrgDomain[] = [
 
 // ─── View types ───────────────────────────────────────────────────────────────
 
-type Tab = 'requirements' | 'technologies' | 'domains';
+type Tab = 'requirements' | 'technologies' | 'domains' | 'techdomains';
 type ReqView = 'list' | 'detail' | 'create' | 'edit';
 type TechView = 'list' | 'detail' | 'create' | 'edit';
 type DomainView = 'list' | 'detail' | 'create' | 'edit';
+type TechDomainView = 'list' | 'detail' | 'create' | 'edit';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>('requirements');
+
+  // Tech Domains state
+  const [techDomains, setTechDomains] = useState<TechDomain[]>(MOCK_TECH_DOMAINS);
+  const [techDomainView, setTechDomainView] = useState<TechDomainView>('list');
+  const [selectedTechDomain, setSelectedTechDomain] = useState<TechDomain | null>(null);
+  const [techDomainForm, setTechDomainForm] = useState({ ...emptyTechDomainForm });
 
   // Domains state
   const [domains, setDomains] = useState<OrgDomain[]>(MOCK_DOMAINS);
@@ -310,6 +348,33 @@ const Index = () => {
 
   const delayClass = (i: number) => ['', 'delay-100', 'delay-200', 'delay-300', 'delay-400'][Math.min(i, 4)];
 
+  // ── TechDomain helpers ──
+
+  function openTechDomainDetail(td: TechDomain) { setSelectedTechDomain(td); setTechDomainView('detail'); }
+  function openTechDomainCreate() { setTechDomainForm({ ...emptyTechDomainForm }); setTechDomainView('create'); }
+  function openTechDomainEdit(td: TechDomain) {
+    setTechDomainForm({ name: td.name, version: td.version, owner: td.owner, status: td.status, description: td.description, orgDomainIds: [...td.orgDomainIds] });
+    setSelectedTechDomain(td); setTechDomainView('edit');
+  }
+  function saveTechDomainCreate() {
+    const now = new Date().toISOString().split('T')[0];
+    setTechDomains(prev => [{ ...techDomainForm, id: `TDOM-${String(prev.length + 1).padStart(3, '0')}`, createdAt: now, updatedAt: now }, ...prev]);
+    setTechDomainView('list');
+  }
+  function saveTechDomainEdit() {
+    if (!selectedTechDomain) return;
+    const now = new Date().toISOString().split('T')[0];
+    setTechDomains(prev => prev.map(d => d.id === selectedTechDomain.id ? { ...d, ...techDomainForm, updatedAt: now } : d));
+    setTechDomainView('list');
+  }
+  function deleteTechDomain(id: string) { setTechDomains(prev => prev.filter(d => d.id !== id)); setTechDomainView('list'); }
+  function toggleTechDomainOrgLink(orgId: string) {
+    setTechDomainForm(f => ({
+      ...f,
+      orgDomainIds: f.orgDomainIds.includes(orgId) ? f.orgDomainIds.filter(x => x !== orgId) : [...f.orgDomainIds, orgId],
+    }));
+  }
+
   // ── Domain helpers ──
 
   function openDomainDetail(domain: OrgDomain) { setSelectedDomain(domain); setDomainView('detail'); }
@@ -334,12 +399,14 @@ const Index = () => {
   const isOnSubpage =
     (tab === 'requirements' && reqView !== 'list') ||
     (tab === 'technologies' && techView !== 'list') ||
-    (tab === 'domains' && domainView !== 'list');
+    (tab === 'domains' && domainView !== 'list') ||
+    (tab === 'techdomains' && techDomainView !== 'list');
 
   function goBack() {
     if (tab === 'requirements') setReqView('list');
     else if (tab === 'technologies') setTechView('list');
-    else setDomainView('list');
+    else if (tab === 'domains') setDomainView('list');
+    else setTechDomainView('list');
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -391,6 +458,7 @@ const Index = () => {
               { key: 'requirements', label: 'Требования', icon: 'ListChecks', count: requirements.length },
               { key: 'technologies', label: 'Технологии', icon: 'Cpu', count: technologies.length },
               { key: 'domains', label: 'Орг. домены', icon: 'Building2', count: domains.length },
+              { key: 'techdomains', label: 'Тех. домены', icon: 'Server', count: techDomains.length },
             ] as { key: Tab; label: string; icon: string; count: number }[]).map(t => (
               <button
                 key={t.key}
@@ -1135,6 +1203,235 @@ const Index = () => {
                       {domainView === 'create' ? 'Создать домен' : 'Сохранить изменения'}
                     </button>
                     <button onClick={() => setDomainView('list')} className="px-6 py-3 glass rounded-xl text-sm text-muted-foreground hover:text-foreground transition-all">Отмена</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══════════════════ TECH DOMAINS TAB ══════════════════ */}
+        {tab === 'techdomains' && (
+          <>
+            {/* LIST */}
+            {techDomainView === 'list' && (
+              <div className="animate-fade-in">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                  {[
+                    { label: 'Всего', value: techDomains.length, icon: 'Server', colorFrom: 'from-violet-500/20', colorTo: 'to-violet-500/5', border: 'border-violet-500/20', text: 'text-violet-400' },
+                    { label: 'Активных', value: techDomains.filter(d => d.status === 'active').length, icon: 'CheckCircle', colorFrom: 'from-green-500/20', colorTo: 'to-green-500/5', border: 'border-green-500/20', text: 'text-green-400' },
+                    { label: 'На ревью', value: techDomains.filter(d => d.status === 'review').length, icon: 'Eye', colorFrom: 'from-cyan-500/20', colorTo: 'to-cyan-500/5', border: 'border-cyan-500/20', text: 'text-cyan-400' },
+                  ].map((s, i) => (
+                    <div key={s.label} className={`glass rounded-2xl p-5 border ${s.border} bg-gradient-to-br ${s.colorFrom} ${s.colorTo} animate-fade-in ${delayClass(i)}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{s.label}</span>
+                        <Icon name={s.icon} size={18} className={s.text} />
+                      </div>
+                      <div className={`font-oswald text-4xl font-semibold ${s.text}`}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {techDomains.length === 0 ? (
+                  <div className="glass rounded-2xl p-16 text-center animate-fade-in">
+                    <Icon name="Server" size={48} className="text-muted-foreground mx-auto mb-4" />
+                    <div className="text-lg font-oswald text-muted-foreground">Технические домены не добавлены</div>
+                    <button onClick={openTechDomainCreate} className="mt-4 flex items-center gap-2 mx-auto px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl text-sm font-medium text-white">
+                      <Icon name="Plus" size={16} />Добавить первый
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {techDomains.map((td, i) => {
+                      const st = DOMAIN_STATUS_CONFIG[td.status];
+                      const linkedOrgs = domains.filter(d => td.orgDomainIds.includes(d.id));
+                      return (
+                        <div key={td.id} onClick={() => openTechDomainDetail(td)}
+                          className={`glass rounded-2xl p-6 cursor-pointer card-hover border border-white/8 animate-fade-in ${delayClass(i)}`}>
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-oswald text-xs text-muted-foreground tracking-widest">{td.id}</span>
+                              </div>
+                              <h3 className="font-oswald text-xl font-semibold text-foreground">{td.name}</h3>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-xs text-violet-400 bg-violet-400/10 border border-violet-400/20 px-2 py-0.5 rounded-full">v{td.version}</span>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${st.color}`}>{st.label}</span>
+                              </div>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/30 to-purple-500/30 border border-violet-500/20 flex items-center justify-center shrink-0">
+                              <Icon name="Server" size={20} className="text-violet-400" />
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-4">{td.description}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {linkedOrgs.length > 0 ? linkedOrgs.map(org => (
+                              <span key={org.id} className="flex items-center gap-1 text-xs px-2 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-emerald-400">
+                                <Icon name="Building2" size={11} />{org.name}
+                              </span>
+                            )) : (
+                              <span className="text-xs text-muted-foreground/50">Орг. домены не привязаны</span>
+                            )}
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
+                              <Icon name="User" size={12} className="text-violet-400" />{td.owner || '—'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DETAIL */}
+            {techDomainView === 'detail' && selectedTechDomain && (
+              <div className="animate-fade-in max-w-3xl">
+                <div className="glass rounded-3xl p-8 mb-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                      <span className="font-oswald text-sm text-muted-foreground tracking-widest">{selectedTechDomain.id}</span>
+                      <h1 className="font-oswald text-3xl font-semibold text-foreground mt-2 mb-3">{selectedTechDomain.name}</h1>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-violet-400 bg-violet-400/10 border border-violet-400/20 px-3 py-1 rounded-full">v{selectedTechDomain.version}</span>
+                        <span className={`text-sm px-3 py-1 rounded-full border font-medium ${DOMAIN_STATUS_CONFIG[selectedTechDomain.status].color}`}>
+                          {DOMAIN_STATUS_CONFIG[selectedTechDomain.status].label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openTechDomainEdit(selectedTechDomain)} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm hover:border-violet-500/40 transition-all">
+                        <Icon name="Pencil" size={15} />Редактировать
+                      </button>
+                      <button onClick={() => deleteTechDomain(selectedTechDomain.id)} className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 hover:bg-red-500/20 transition-all">
+                        <Icon name="Trash2" size={15} />Удалить
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border-t border-white/8 pt-6">
+                    <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-3">Описание</h2>
+                    <p className="text-foreground leading-relaxed text-[15px]">{selectedTechDomain.description}</p>
+                  </div>
+                </div>
+
+                <div className="glass rounded-2xl p-6 mb-4">
+                  <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Информация</h2>
+                  <div className="space-y-3">
+                    {[
+                      { icon: 'User', label: 'Владелец', value: selectedTechDomain.owner || '—' },
+                      { icon: 'Tag', label: 'Версия', value: `v${selectedTechDomain.version}` },
+                      { icon: 'Calendar', label: 'Создано', value: selectedTechDomain.createdAt },
+                      { icon: 'RefreshCw', label: 'Обновлено', value: selectedTechDomain.updatedAt },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground"><Icon name={item.icon} size={14} />{item.label}</span>
+                        <span className="text-sm text-foreground font-medium">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedTechDomain.orgDomainIds.length > 0 && (
+                  <div className="glass rounded-2xl p-6">
+                    <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Привязанные орг. домены</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {domains.filter(d => selectedTechDomain.orgDomainIds.includes(d.id)).map(org => (
+                        <span key={org.id} className="flex items-center gap-2 text-sm px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                          <Icon name="Building2" size={14} />{org.name}
+                          <span className="text-emerald-400/60 text-xs">v{org.version}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CREATE / EDIT */}
+            {(techDomainView === 'create' || techDomainView === 'edit') && (
+              <div className="animate-fade-in max-w-3xl">
+                <div className="mb-6">
+                  <h1 className="font-oswald text-3xl font-semibold" style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    {techDomainView === 'create' ? 'Новый тех. домен' : 'Редактирование'}
+                  </h1>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {techDomainView === 'create' ? 'Создайте карточку технического домена' : `Изменение ${selectedTechDomain?.id}`}
+                  </p>
+                </div>
+                <div className="glass rounded-3xl p-8 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Название *</label>
+                      <input value={techDomainForm.name} onChange={e => setTechDomainForm(f => ({ ...f, name: e.target.value }))} placeholder="Название технического домена"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-violet-500/50 transition-all placeholder:text-muted-foreground/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Версия</label>
+                      <input value={techDomainForm.version} onChange={e => setTechDomainForm(f => ({ ...f, version: e.target.value }))} placeholder="1.0"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-violet-500/50 transition-all placeholder:text-muted-foreground/50" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Владелец</label>
+                      <input value={techDomainForm.owner} onChange={e => setTechDomainForm(f => ({ ...f, owner: e.target.value }))} placeholder="Имя владельца домена"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-violet-500/50 transition-all placeholder:text-muted-foreground/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Статус</label>
+                      <select value={techDomainForm.status} onChange={e => setTechDomainForm(f => ({ ...f, status: e.target.value as DomainStatus }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-violet-500/50 cursor-pointer">
+                        {Object.entries(DOMAIN_STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Описание</label>
+                    <textarea value={techDomainForm.description} onChange={e => setTechDomainForm(f => ({ ...f, description: e.target.value }))} rows={4}
+                      placeholder="Назначение домена, технические границы, ключевые компоненты..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-violet-500/50 transition-all resize-none placeholder:text-muted-foreground/50" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">
+                      Привязка к орг. доменам
+                      {techDomainForm.orgDomainIds.length > 0 && (
+                        <span className="ml-2 text-xs px-2 py-0.5 bg-emerald-500/20 text-emerald-400 rounded-full normal-case tracking-normal">{techDomainForm.orgDomainIds.length} выбрано</span>
+                      )}
+                    </label>
+                    {domains.length === 0 ? (
+                      <p className="text-sm text-muted-foreground/60 italic">Орг. домены не созданы. Сначала добавьте их в таб «Орг. домены».</p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-2">
+                        {domains.map(org => {
+                          const isSelected = techDomainForm.orgDomainIds.includes(org.id);
+                          const st = DOMAIN_STATUS_CONFIG[org.status];
+                          return (
+                            <button key={org.id} type="button" onClick={() => toggleTechDomainOrgLink(org.id)}
+                              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${isSelected ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-white/3 hover:border-white/20'}`}>
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-white/20'}`}>
+                                {isSelected && <Icon name="Check" size={12} className="text-white" />}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-foreground truncate">{org.name}</span>
+                                  <span className="text-xs text-muted-foreground shrink-0">{org.id}</span>
+                                </div>
+                                <span className={`text-xs px-1.5 py-0.5 rounded border ${st.color}`}>{st.label}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button onClick={techDomainView === 'create' ? saveTechDomainCreate : saveTechDomainEdit}
+                      disabled={!techDomainForm.name.trim()}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl text-sm font-medium text-white hover:from-violet-400 hover:to-purple-400 transition-all shadow-lg shadow-violet-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                      <Icon name="Save" size={16} />
+                      {techDomainView === 'create' ? 'Создать домен' : 'Сохранить изменения'}
+                    </button>
+                    <button onClick={() => setTechDomainView('list')} className="px-6 py-3 glass rounded-xl text-sm text-muted-foreground hover:text-foreground transition-all">Отмена</button>
                   </div>
                 </div>
               </div>

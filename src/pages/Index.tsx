@@ -46,6 +46,7 @@ interface TechDomain {
   status: DomainStatus;
   description: string;
   orgDomainIds: string[];
+  technologyIds: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -160,20 +161,20 @@ const emptyDomainForm = {
 };
 
 const emptyTechDomainForm = {
-  name: '', version: '1.0', owner: '', status: 'draft' as DomainStatus, description: '', orgDomainIds: [] as string[],
+  name: '', version: '1.0', owner: '', status: 'draft' as DomainStatus, description: '', orgDomainIds: [] as string[], technologyIds: [] as string[],
 };
 
 const MOCK_TECH_DOMAINS: TechDomain[] = [
   {
     id: 'TDOM-001', name: 'Сервис авторизации', version: '3.1', owner: 'Дмитрий Орлов',
     status: 'active', description: 'Технический домен, обеспечивающий аутентификацию и авторизацию пользователей через OAuth 2.0 и JWT.',
-    orgDomainIds: ['DOM-001'],
+    orgDomainIds: ['DOM-001'], technologyIds: ['TECH-001'],
     createdAt: '2024-01-15', updatedAt: '2024-02-20',
   },
   {
     id: 'TDOM-002', name: 'Платёжный процессор', version: '2.0', owner: 'Алексей Петров',
     status: 'review', description: 'Обработка и маршрутизация платёжных транзакций, интеграция с внешними шлюзами.',
-    orgDomainIds: ['DOM-002'],
+    orgDomainIds: ['DOM-002'], technologyIds: ['TECH-002'],
     createdAt: '2024-01-22', updatedAt: '2024-02-25',
   },
 ];
@@ -353,7 +354,7 @@ const Index = () => {
   function openTechDomainDetail(td: TechDomain) { setSelectedTechDomain(td); setTechDomainView('detail'); }
   function openTechDomainCreate() { setTechDomainForm({ ...emptyTechDomainForm }); setTechDomainView('create'); }
   function openTechDomainEdit(td: TechDomain) {
-    setTechDomainForm({ name: td.name, version: td.version, owner: td.owner, status: td.status, description: td.description, orgDomainIds: [...td.orgDomainIds] });
+    setTechDomainForm({ name: td.name, version: td.version, owner: td.owner, status: td.status, description: td.description, orgDomainIds: [...td.orgDomainIds], technologyIds: [...td.technologyIds] });
     setSelectedTechDomain(td); setTechDomainView('edit');
   }
   function saveTechDomainCreate() {
@@ -372,6 +373,12 @@ const Index = () => {
     setTechDomainForm(f => ({
       ...f,
       orgDomainIds: f.orgDomainIds.includes(orgId) ? f.orgDomainIds.filter(x => x !== orgId) : [...f.orgDomainIds, orgId],
+    }));
+  }
+  function toggleTechDomainTechLink(techId: string) {
+    setTechDomainForm(f => ({
+      ...f,
+      technologyIds: f.technologyIds.includes(techId) ? f.technologyIds.filter(x => x !== techId) : [...f.technologyIds, techId],
     }));
   }
 
@@ -1332,13 +1339,26 @@ const Index = () => {
                 </div>
 
                 {selectedTechDomain.orgDomainIds.length > 0 && (
-                  <div className="glass rounded-2xl p-6">
+                  <div className="glass rounded-2xl p-6 mb-4">
                     <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Привязанные орг. домены</h2>
                     <div className="flex flex-wrap gap-2">
                       {domains.filter(d => selectedTechDomain.orgDomainIds.includes(d.id)).map(org => (
                         <span key={org.id} className="flex items-center gap-2 text-sm px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
                           <Icon name="Building2" size={14} />{org.name}
                           <span className="text-emerald-400/60 text-xs">v{org.version}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {selectedTechDomain.technologyIds.length > 0 && (
+                  <div className="glass rounded-2xl p-6">
+                    <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Привязанные технологии</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {technologies.filter(t => selectedTechDomain.technologyIds.includes(t.id)).map(tech => (
+                        <span key={tech.id} className="flex items-center gap-2 text-sm px-3 py-1.5 bg-violet-500/10 border border-violet-500/20 rounded-xl text-violet-400">
+                          <Icon name="Cpu" size={14} />{tech.name}
+                          <span className="text-violet-400/60 text-xs">v{tech.version}</span>
                         </span>
                       ))}
                     </div>
@@ -1417,6 +1437,38 @@ const Index = () => {
                                   <span className="text-xs text-muted-foreground shrink-0">{org.id}</span>
                                 </div>
                                 <span className={`text-xs px-1.5 py-0.5 rounded border ${st.color}`}>{st.label}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">
+                      Привязка к технологиям
+                      {techDomainForm.technologyIds.length > 0 && (
+                        <span className="ml-2 text-xs px-2 py-0.5 bg-violet-500/20 text-violet-400 rounded-full normal-case tracking-normal">{techDomainForm.technologyIds.length} выбрано</span>
+                      )}
+                    </label>
+                    {technologies.length === 0 ? (
+                      <p className="text-sm text-muted-foreground/60 italic">Технологии не добавлены. Сначала создайте их в таб «Технологии».</p>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-2">
+                        {technologies.map(tech => {
+                          const isSelected = techDomainForm.technologyIds.includes(tech.id);
+                          return (
+                            <button key={tech.id} type="button" onClick={() => toggleTechDomainTechLink(tech.id)}
+                              className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${isSelected ? 'border-violet-500/50 bg-violet-500/10' : 'border-white/10 bg-white/3 hover:border-white/20'}`}>
+                              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${isSelected ? 'bg-violet-500 border-violet-500' : 'border-white/20'}`}>
+                                {isSelected && <Icon name="Check" size={12} className="text-white" />}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-foreground truncate">{tech.name}</span>
+                                  <span className="text-xs text-muted-foreground shrink-0">{tech.id}</span>
+                                </div>
+                                <span className="text-xs text-violet-400/70">v{tech.version}</span>
                               </div>
                             </button>
                           );

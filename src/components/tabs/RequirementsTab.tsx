@@ -175,8 +175,13 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
                               {req.tags.length > 4 && <span className="text-xs px-2 py-0.5 glass rounded-md text-muted-foreground">+{req.tags.length - 4}</span>}
                             </div>
                             <div className="flex items-center gap-3 ml-auto text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1.5 text-cyan-400/80">
+                                <Icon name="Star" size={11} />К:{req.scoringCategory}
+                              </span>
+                              <span className="flex items-center gap-1.5 text-violet-400/80">
+                                <Icon name="Weight" size={11} />В:{req.scoringWeight}
+                              </span>
                               <span className="flex items-center gap-1"><Icon name="User" size={12} />{req.author}</span>
-                              <span className="flex items-center gap-1"><Icon name="Tag" size={12} />v{req.version}</span>
                               <span className="flex items-center gap-1"><Icon name="Calendar" size={12} />{req.updatedAt}</span>
                             </div>
                           </div>

@@ -40,11 +40,12 @@ function MermaidDiagram({ content, id }: { content: string; id: string }) {
 
 // ─── Detail панели ─────────────────────────────────────────────────────────────
 
-function ArchDetail({ arch, solutions, techDomains, onClose }: {
+function ArchDetail({ arch, solutions, techDomains, onClose, onOpenSolution }: {
   arch: TypicalArchitecture;
   solutions: TechnicalSolution[];
   techDomains: TechDomain[];
   onClose: () => void;
+  onOpenSolution: (s: TechnicalSolution) => void;
 }) {
   const cfg = ARCH_STATUS_CONFIG[arch.status] ?? { label: arch.status, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
   const domain = techDomains.find(d => d.id === arch.techDomainId);
@@ -118,13 +119,16 @@ function ArchDetail({ arch, solutions, techDomains, onClose }: {
                 {linkedSolutions.map(s => {
                   const sc = SOLUTION_STATUS_CONFIG[s.status] ?? { label: s.status, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
                   return (
-                    <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10">
+                    <button key={s.id} onClick={() => { onClose(); onOpenSolution(s); }} className="w-full flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group text-left">
                       <div>
-                        <p className="text-sm font-medium text-foreground">{s.name}</p>
+                        <p className="text-sm font-medium text-foreground group-hover:text-blue-300 transition-colors">{s.name}</p>
                         <p className="text-xs text-muted-foreground">v{s.version} · {s.owner}</p>
                       </div>
-                      <Badge className={sc.color}>{sc.label}</Badge>
-                    </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className={sc.color}>{sc.label}</Badge>
+                        <Icon name="ChevronRight" size={14} className="text-muted-foreground group-hover:text-blue-400 transition-colors" />
+                      </div>
+                    </button>
                   );
                 })}
               </div>
@@ -136,10 +140,11 @@ function ArchDetail({ arch, solutions, techDomains, onClose }: {
   );
 }
 
-function SolutionDetail({ solution, technologies, onClose }: {
+function SolutionDetail({ solution, technologies, onClose, onOpenTech }: {
   solution: TechnicalSolution;
   technologies: Technology[];
   onClose: () => void;
+  onOpenTech: (t: Technology) => void;
 }) {
   const cfg = SOLUTION_STATUS_CONFIG[solution.status] ?? { label: solution.status, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
   const linked = technologies.filter(t => solution.technologyIds.includes(t.id));
@@ -185,13 +190,16 @@ function SolutionDetail({ solution, technologies, onClose }: {
               </h3>
               <div className="space-y-2">
                 {linked.map(tech => (
-                  <div key={tech.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                  <button key={tech.id} onClick={() => { onClose(); onOpenTech(tech); }} className="w-full p-3 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all group text-left">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-foreground">{tech.name}</p>
-                      <span className="text-xs text-cyan-400 font-mono">v{tech.version}</span>
+                      <p className="text-sm font-medium text-foreground group-hover:text-cyan-300 transition-colors">{tech.name}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-cyan-400 font-mono">v{tech.version}</span>
+                        <Icon name="ChevronRight" size={14} className="text-muted-foreground group-hover:text-cyan-400 transition-colors" />
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tech.description}</p>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -394,6 +402,14 @@ export default function Catalog() {
   const totalCount = filteredArchitectures.length + filteredSolutions.length + filteredTechnologies.length;
   const isEmpty = totalCount === 0;
 
+  const archRef = useRef<HTMLElement>(null);
+  const solRef = useRef<HTMLElement>(null);
+  const techRef = useRef<HTMLElement>(null);
+
+  function scrollTo(ref: React.RefObject<HTMLElement>) {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   const statusOptions = [
     { value: 'all', label: 'Все статусы' },
     { value: 'approved', label: 'Утверждено' },
@@ -445,6 +461,34 @@ export default function Catalog() {
             </select>
           </div>
         </div>
+        {/* Якорное меню */}
+        {!isEmpty && (
+          <div className="border-t border-white/5 bg-background/60">
+            <div className="max-w-7xl mx-auto px-6 py-2 flex items-center gap-1">
+              {filteredArchitectures.length > 0 && (
+                <button onClick={() => scrollTo(archRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-pink-400 hover:bg-pink-500/10 transition-all">
+                  <Icon name="Blocks" size={12} className="text-pink-400" />
+                  Архитектуры
+                  <span className="font-mono opacity-60">{filteredArchitectures.length}</span>
+                </button>
+              )}
+              {filteredSolutions.length > 0 && (
+                <button onClick={() => scrollTo(solRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-all">
+                  <Icon name="LayoutGrid" size={12} className="text-blue-400" />
+                  Решения
+                  <span className="font-mono opacity-60">{filteredSolutions.length}</span>
+                </button>
+              )}
+              {filteredTechnologies.length > 0 && (
+                <button onClick={() => scrollTo(techRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-all">
+                  <Icon name="Cpu" size={12} className="text-cyan-400" />
+                  Технологии
+                  <span className="font-mono opacity-60">{filteredTechnologies.length}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-10">
@@ -459,7 +503,7 @@ export default function Catalog() {
         ) : (
           <>
             {filteredArchitectures.length > 0 && (
-              <section>
+              <section ref={archRef}>
                 <div className="flex items-center gap-2 mb-4">
                   <Icon name="Blocks" size={16} className="text-pink-400" />
                   <h2 className="text-sm font-semibold text-pink-400">Типовые архитектуры</h2>
@@ -474,7 +518,7 @@ export default function Catalog() {
             )}
 
             {filteredSolutions.length > 0 && (
-              <section>
+              <section ref={solRef}>
                 <div className="flex items-center gap-2 mb-4">
                   <Icon name="LayoutGrid" size={16} className="text-blue-400" />
                   <h2 className="text-sm font-semibold text-blue-400">Технические решения</h2>
@@ -489,7 +533,7 @@ export default function Catalog() {
             )}
 
             {filteredTechnologies.length > 0 && (
-              <section>
+              <section ref={techRef}>
                 <div className="flex items-center gap-2 mb-4">
                   <Icon name="Cpu" size={16} className="text-cyan-400" />
                   <h2 className="text-sm font-semibold text-cyan-400">Технологии</h2>
@@ -508,10 +552,21 @@ export default function Catalog() {
 
       {/* Detail панели */}
       {selectedArch && (
-        <ArchDetail arch={selectedArch} solutions={solutions} techDomains={techDomains} onClose={() => setSelectedArch(null)} />
+        <ArchDetail
+          arch={selectedArch}
+          solutions={solutions}
+          techDomains={techDomains}
+          onClose={() => setSelectedArch(null)}
+          onOpenSolution={s => { setSelectedArch(null); setSelectedSol(s); }}
+        />
       )}
       {selectedSol && (
-        <SolutionDetail solution={selectedSol} technologies={technologies} onClose={() => setSelectedSol(null)} />
+        <SolutionDetail
+          solution={selectedSol}
+          technologies={technologies}
+          onClose={() => setSelectedSol(null)}
+          onOpenTech={t => { setSelectedSol(null); setSelectedTech(t); }}
+        />
       )}
       {selectedTech && (
         <TechDetail tech={selectedTech} requirements={requirements} onClose={() => setSelectedTech(null)} />

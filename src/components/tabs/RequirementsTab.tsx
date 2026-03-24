@@ -1,7 +1,7 @@
 import { useState, forwardRef, useImperativeHandle } from 'react';
 import Icon from '@/components/ui/icon';
 import {
-  Requirement, Technology, Status, Priority, Category, ReqView,
+  Requirement, ReqAttachment, Technology, Status, Priority, Category, ReqView,
   EnvType, AppStage, InteractionLevel, Applicability,
   PRIORITY_CONFIG, STATUS_CONFIG, CATEGORY_CONFIG,
   emptyReqForm, delayClass,
@@ -84,8 +84,37 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
 
     function openReqDetail(req: Requirement) { setSelectedReq(req); setReqView('detail'); }
     function openReqEdit(req: Requirement) {
-      setReqForm({ title: req.title, description: req.description, category: req.category, priority: req.priority, status: req.status, tags: [...req.tags], author: req.author, version: req.version, environments: [...req.environments], appStages: [...req.appStages], externalWithIod: req.externalWithIod, externalWithoutIod: req.externalWithoutIod, internalWithIod: req.internalWithIod, internalWithoutIod: req.internalWithoutIod, procurement: req.procurement, scoringCategory: req.scoringCategory, scoringWeight: req.scoringWeight });
+      setReqForm({ title: req.title, description: req.description, category: req.category, priority: req.priority, status: req.status, tags: [...req.tags], author: req.author, version: req.version, environments: [...req.environments], appStages: [...req.appStages], externalWithIod: req.externalWithIod, externalWithoutIod: req.externalWithoutIod, internalWithIod: req.internalWithIod, internalWithoutIod: req.internalWithoutIod, procurement: req.procurement, scoringCategory: req.scoringCategory, scoringWeight: req.scoringWeight, attachments: [...(req.attachments ?? [])] });
       setSelectedReq(req); setTagInput(''); setReqView('edit');
+    }
+
+    function handleAttachFiles(files: FileList | null) {
+      if (!files) return;
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const att: ReqAttachment = {
+            id: `ATT-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            dataUrl: e.target?.result as string,
+            uploadedAt: new Date().toISOString().split('T')[0],
+          };
+          setReqForm(f => ({ ...f, attachments: [...f.attachments, att] }));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function removeAttachment(id: string) {
+      setReqForm(f => ({ ...f, attachments: f.attachments.filter(a => a.id !== id) }));
+    }
+
+    function formatFileSize(bytes: number): string {
+      if (bytes < 1024) return `${bytes} Б`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
     }
     function saveReqCreate() {
       const now = new Date().toISOString().split('T')[0];
@@ -435,6 +464,35 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
                   </div>
                 ) : null;
               })()}
+
+              {(selectedReq.attachments ?? []).length > 0 && (
+                <div className="glass rounded-2xl p-6 md:col-span-2">
+                  <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Вложения</h2>
+                  <ul className="space-y-2">
+                    {(selectedReq.attachments ?? []).map(att => {
+                      const isImage = att.type.startsWith('image/');
+                      return (
+                        <li key={att.id} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-3">
+                          {isImage
+                            ? <img src={att.dataUrl} alt={att.name} className="w-8 h-8 rounded object-cover shrink-0 border border-white/10" />
+                            : <Icon name="FileText" size={18} className="text-cyan-400 shrink-0" />}
+                          <div className="flex-1 min-w-0">
+                            <a href={att.dataUrl} download={att.name}
+                              className="text-sm text-foreground hover:text-cyan-400 transition-colors truncate block">
+                              {att.name}
+                            </a>
+                            <span className="text-xs text-muted-foreground">{formatFileSize(att.size)} · {att.uploadedAt}</span>
+                          </div>
+                          <a href={att.dataUrl} download={att.name}
+                            className="text-muted-foreground hover:text-cyan-400 transition-colors shrink-0" title="Скачать">
+                            <Icon name="Download" size={16} />
+                          </a>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -597,6 +655,31 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Вложения */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wider font-oswald">Вложения</label>
+                <label className="flex flex-col items-center justify-center gap-2 w-full border-2 border-dashed border-white/15 hover:border-cyan-500/40 rounded-xl py-5 px-4 cursor-pointer transition-all group">
+                  <Icon name="Paperclip" size={20} className="text-muted-foreground group-hover:text-cyan-400 transition-colors" />
+                  <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Нажмите или перетащите файлы сюда</span>
+                  <span className="text-xs text-muted-foreground/60">Любой формат, несколько файлов</span>
+                  <input type="file" multiple className="hidden" onChange={e => handleAttachFiles(e.target.files)} />
+                </label>
+                {reqForm.attachments.length > 0 && (
+                  <ul className="mt-3 space-y-2">
+                    {reqForm.attachments.map(att => (
+                      <li key={att.id} className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5">
+                        <Icon name="FileText" size={16} className="text-cyan-400 shrink-0" />
+                        <span className="text-sm flex-1 truncate">{att.name}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{formatFileSize(att.size)}</span>
+                        <button onClick={() => removeAttachment(att.id)} className="text-muted-foreground hover:text-red-400 transition-colors shrink-0">
+                          <Icon name="X" size={14} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="flex items-center gap-3 pt-2">

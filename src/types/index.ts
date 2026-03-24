@@ -56,6 +56,15 @@ export interface TechDomain {
   updatedAt: string;
 }
 
+export interface ReqAttachment {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  dataUrl: string;
+  uploadedAt: string;
+}
+
 export interface Requirement {
   id: string;
   title: string;
@@ -77,6 +86,7 @@ export interface Requirement {
   procurement: Applicability;
   scoringCategory: number;
   scoringWeight: number;
+  attachments: ReqAttachment[];
 }
 
 // ─── Configs ──────────────────────────────────────────────────────────────────
@@ -126,6 +136,7 @@ export const emptyReqForm = {
   procurement: 'Не применимо' as Applicability,
   scoringCategory: 1,
   scoringWeight: 1,
+  attachments: [] as ReqAttachment[],
 };
 
 export const emptyTechForm = {
@@ -147,6 +158,7 @@ const DEFAULT_REQ_EXTRA = {
   externalWithIod: 'Не требуется' as InteractionLevel, externalWithoutIod: 'Не требуется' as InteractionLevel,
   internalWithIod: 'Не требуется' as InteractionLevel, internalWithoutIod: 'Не требуется' as InteractionLevel,
   procurement: 'Не применимо' as Applicability, scoringCategory: 1, scoringWeight: 1,
+  attachments: [] as ReqAttachment[],
 };
 
 export const MOCK_REQUIREMENTS: Requirement[] = [

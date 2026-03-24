@@ -198,6 +198,7 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
     const [selectedTech, setSelectedTech] = useState<Technology | null>(null);
     const [techForm, setTechForm] = useState({ ...emptyTechForm });
     const [techReqIds, setTechReqIds] = useState<string[]>([]);
+    const [techSearch, setTechSearch] = useState('');
     const schemeInputRef = useRef<HTMLInputElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -265,6 +266,23 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
         {/* LIST */}
         {techView === 'list' && (
           <div className="animate-fade-in">
+            {/* Search */}
+            <div className="flex gap-3 mb-6">
+              <div className="relative flex-1">
+                <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={techSearch}
+                  onChange={e => setTechSearch(e.target.value)}
+                  placeholder="Поиск по ID, названию, описанию..."
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-violet-500/50 transition-colors"
+                />
+                {techSearch && (
+                  <button onClick={() => setTechSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                    <Icon name="X" size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Технологий', value: technologies.length, icon: 'Cpu', colorFrom: 'from-violet-500/20', colorTo: 'to-violet-500/5', border: 'border-violet-500/20', text: 'text-violet-400' },
@@ -281,7 +299,12 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
               ))}
             </div>
 
-            {technologies.length === 0 ? (
+            {(() => {
+              const q = techSearch.toLowerCase();
+              const filtered = technologies.filter(t =>
+                !q || t.id.toLowerCase().includes(q) || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+              );
+              return technologies.length === 0 ? (
               <div className="glass rounded-2xl p-16 text-center animate-fade-in">
                 <Icon name="Cpu" size={48} className="text-muted-foreground mx-auto mb-4" />
                 <div className="text-lg font-oswald text-muted-foreground">Технологии не добавлены</div>
@@ -289,9 +312,15 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
                   <Icon name="Plus" size={16} />Добавить первую
                 </button>
               </div>
+            ) : filtered.length === 0 ? (
+              <div className="glass rounded-2xl p-10 text-center animate-fade-in">
+                <Icon name="SearchX" size={36} className="text-muted-foreground mx-auto mb-3" />
+                <div className="text-sm font-oswald text-muted-foreground">Ничего не найдено</div>
+                <button onClick={() => setTechSearch('')} className="mt-3 text-xs text-violet-400 hover:underline">Сбросить поиск</button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {technologies.map((tech, i) => (
+                {filtered.map((tech, i) => (
                   <div key={tech.id} onClick={() => openTechDetail(tech)}
                     className={`glass rounded-2xl p-6 cursor-pointer card-hover border border-white/8 animate-fade-in ${delayClass(i)}`}>
                     <div className="flex items-start justify-between mb-4">
@@ -323,7 +352,8 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
                   </div>
                 ))}
               </div>
-            )}
+            );
+            })()}
           </div>
         )}
 

@@ -28,10 +28,14 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
     const [domainView, setDomainView] = useState<DomainView>('list');
     const [selectedDomain, setSelectedDomain] = useState<OrgDomain | null>(null);
     const [domainForm, setDomainForm] = useState({ ...emptyDomainForm });
+    const [domainSearch, setDomainSearch] = useState('');
+    const [domainFilterStatus, setDomainFilterStatus] = useState<DomainStatus | 'all'>('all');
 
     const [techDomainView, setTechDomainView] = useState<TechDomainView>('list');
     const [selectedTechDomain, setSelectedTechDomain] = useState<TechDomain | null>(null);
     const [techDomainForm, setTechDomainForm] = useState({ ...emptyTechDomainForm });
+    const [techDomainSearch, setTechDomainSearch] = useState('');
+    const [techDomainFilterStatus, setTechDomainFilterStatus] = useState<DomainStatus | 'all'>('all');
 
     useImperativeHandle(ref, () => ({
       domainIsOnSubpage: domainView !== 'list',
@@ -92,12 +96,46 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
       }));
     }
 
+    const DOMAIN_STATUSES: DomainStatus[] = ['active', 'draft', 'review', 'archived'];
+
     // ════ DOMAINS TAB ════
     if (activeTab === 'domains') return (
       <>
         {/* LIST */}
         {domainView === 'list' && (
           <div className="animate-fade-in">
+            {/* Search + Filter */}
+            <div className="flex gap-3 mb-6 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={domainSearch}
+                  onChange={e => setDomainSearch(e.target.value)}
+                  placeholder="Поиск по ID, названию, описанию..."
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 transition-colors"
+                />
+                {domainSearch && (
+                  <button onClick={() => setDomainSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <Icon name="X" size={14} />
+                  </button>
+                )}
+              </div>
+              <select
+                value={domainFilterStatus}
+                onChange={e => setDomainFilterStatus(e.target.value as DomainStatus | 'all')}
+                className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-emerald-500/50 transition-colors"
+              >
+                <option value="all">Все статусы</option>
+                {DOMAIN_STATUSES.map(s => (
+                  <option key={s} value={s}>{DOMAIN_STATUS_CONFIG[s].label}</option>
+                ))}
+              </select>
+              {(domainSearch || domainFilterStatus !== 'all') && (
+                <button onClick={() => { setDomainSearch(''); setDomainFilterStatus('all'); }} className="px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 rounded-xl bg-white/5 transition-colors flex items-center gap-1.5">
+                  <Icon name="X" size={13} />Сбросить
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Всего доменов', value: domains.length, icon: 'Building2', colorFrom: 'from-emerald-500/20', colorTo: 'to-emerald-500/5', border: 'border-emerald-500/20', text: 'text-emerald-400' },
@@ -114,7 +152,13 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
               ))}
             </div>
 
-            {domains.length === 0 ? (
+            {(() => {
+              const q = domainSearch.toLowerCase();
+              const filtered = domains.filter(d =>
+                (domainFilterStatus === 'all' || d.status === domainFilterStatus) &&
+                (!q || d.id.toLowerCase().includes(q) || d.name.toLowerCase().includes(q) || d.description.toLowerCase().includes(q))
+              );
+              return domains.length === 0 ? (
               <div className="glass rounded-2xl p-16 text-center animate-fade-in">
                 <Icon name="Building2" size={48} className="text-muted-foreground mx-auto mb-4" />
                 <div className="text-lg font-oswald text-muted-foreground">Домены не добавлены</div>
@@ -122,9 +166,15 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
                   <Icon name="Plus" size={16} />Добавить первый
                 </button>
               </div>
+            ) : filtered.length === 0 ? (
+              <div className="glass rounded-2xl p-10 text-center animate-fade-in">
+                <Icon name="SearchX" size={36} className="text-muted-foreground mx-auto mb-3" />
+                <div className="text-sm font-oswald text-muted-foreground">Ничего не найдено</div>
+                <button onClick={() => { setDomainSearch(''); setDomainFilterStatus('all'); }} className="mt-3 text-xs text-emerald-400 hover:underline">Сбросить фильтры</button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {domains.map((domain, i) => {
+                {filtered.map((domain, i) => {
                   const st = DOMAIN_STATUS_CONFIG[domain.status];
                   return (
                     <div key={domain.id} onClick={() => openDomainDetail(domain)}
@@ -157,7 +207,8 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
                   );
                 })}
               </div>
-            )}
+            );
+            })()}
           </div>
         )}
 
@@ -279,6 +330,38 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
         {/* LIST */}
         {techDomainView === 'list' && (
           <div className="animate-fade-in">
+            {/* Search + Filter */}
+            <div className="flex gap-3 mb-6 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={techDomainSearch}
+                  onChange={e => setTechDomainSearch(e.target.value)}
+                  placeholder="Поиск по ID, названию, описанию..."
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-violet-500/50 transition-colors"
+                />
+                {techDomainSearch && (
+                  <button onClick={() => setTechDomainSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <Icon name="X" size={14} />
+                  </button>
+                )}
+              </div>
+              <select
+                value={techDomainFilterStatus}
+                onChange={e => setTechDomainFilterStatus(e.target.value as DomainStatus | 'all')}
+                className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-violet-500/50 transition-colors"
+              >
+                <option value="all">Все статусы</option>
+                {DOMAIN_STATUSES.map(s => (
+                  <option key={s} value={s}>{DOMAIN_STATUS_CONFIG[s].label}</option>
+                ))}
+              </select>
+              {(techDomainSearch || techDomainFilterStatus !== 'all') && (
+                <button onClick={() => { setTechDomainSearch(''); setTechDomainFilterStatus('all'); }} className="px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 rounded-xl bg-white/5 transition-colors flex items-center gap-1.5">
+                  <Icon name="X" size={13} />Сбросить
+                </button>
+              )}
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
               {[
                 { label: 'Всего', value: techDomains.length, icon: 'Server', colorFrom: 'from-violet-500/20', colorTo: 'to-violet-500/5', border: 'border-violet-500/20', text: 'text-violet-400' },
@@ -295,7 +378,13 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
               ))}
             </div>
 
-            {techDomains.length === 0 ? (
+            {(() => {
+              const q = techDomainSearch.toLowerCase();
+              const filtered = techDomains.filter(td =>
+                (techDomainFilterStatus === 'all' || td.status === techDomainFilterStatus) &&
+                (!q || td.id.toLowerCase().includes(q) || td.name.toLowerCase().includes(q) || td.description.toLowerCase().includes(q))
+              );
+              return techDomains.length === 0 ? (
               <div className="glass rounded-2xl p-16 text-center animate-fade-in">
                 <Icon name="Server" size={48} className="text-muted-foreground mx-auto mb-4" />
                 <div className="text-lg font-oswald text-muted-foreground">Технические домены не добавлены</div>
@@ -303,9 +392,15 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
                   <Icon name="Plus" size={16} />Добавить первый
                 </button>
               </div>
+            ) : filtered.length === 0 ? (
+              <div className="glass rounded-2xl p-10 text-center animate-fade-in">
+                <Icon name="SearchX" size={36} className="text-muted-foreground mx-auto mb-3" />
+                <div className="text-sm font-oswald text-muted-foreground">Ничего не найдено</div>
+                <button onClick={() => { setTechDomainSearch(''); setTechDomainFilterStatus('all'); }} className="mt-3 text-xs text-violet-400 hover:underline">Сбросить фильтры</button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {techDomains.map((td, i) => {
+                {filtered.map((td, i) => {
                   const st = DOMAIN_STATUS_CONFIG[td.status];
                   const linkedOrgs = domains.filter(d => td.orgDomainIds.includes(d.id));
                   return (
@@ -343,7 +438,8 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
                   );
                 })}
               </div>
-            )}
+            );
+            })()}
           </div>
         )}
 

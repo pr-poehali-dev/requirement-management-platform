@@ -284,6 +284,10 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
     const [form, setForm] = useState({ ...emptyArchForm });
     const [tagInput, setTagInput] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [archSearch, setArchSearch] = useState('');
+    const [archFilterStatus, setArchFilterStatus] = useState<ArchStatus | 'all'>('all');
+    const [archFilterIb, setArchFilterIb] = useState<'all' | 'yes' | 'no'>('all');
+    const [archFilterIt, setArchFilterIt] = useState<'all' | 'yes' | 'no'>('all');
 
     useImperativeHandle(ref, () => ({
       isOnSubpage: view !== 'list',
@@ -366,9 +370,61 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
       return requirements;
     }
 
+    const ARCH_STATUSES: ArchStatus[] = ['draft', 'review', 'approved', 'rejected', 'archived'];
+
     // ── LIST ────────────────────────────────────────────────────────────────────
     if (view === 'list') return (
       <div className="animate-fade-in">
+        {/* Search + Filters */}
+        <div className="flex gap-3 mb-6 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={archSearch}
+              onChange={e => setArchSearch(e.target.value)}
+              placeholder="Поиск по ID, названию, описанию..."
+              className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500/50 transition-colors"
+            />
+            {archSearch && (
+              <button onClick={() => setArchSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <Icon name="X" size={14} />
+              </button>
+            )}
+          </div>
+          <select
+            value={archFilterStatus}
+            onChange={e => setArchFilterStatus(e.target.value as ArchStatus | 'all')}
+            className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-indigo-500/50 transition-colors"
+          >
+            <option value="all">Все статусы</option>
+            {ARCH_STATUSES.map(s => (
+              <option key={s} value={s}>{ARCH_STATUS_CONFIG[s].label}</option>
+            ))}
+          </select>
+          <select
+            value={archFilterIb}
+            onChange={e => setArchFilterIb(e.target.value as 'all' | 'yes' | 'no')}
+            className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-indigo-500/50 transition-colors"
+          >
+            <option value="all">ИБ: все</option>
+            <option value="yes">Одобрено ИБ</option>
+            <option value="no">Без ИБ</option>
+          </select>
+          <select
+            value={archFilterIt}
+            onChange={e => setArchFilterIt(e.target.value as 'all' | 'yes' | 'no')}
+            className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-indigo-500/50 transition-colors"
+          >
+            <option value="all">ИТ: все</option>
+            <option value="yes">Одобрено ИТ</option>
+            <option value="no">Без ИТ</option>
+          </select>
+          {(archSearch || archFilterStatus !== 'all' || archFilterIb !== 'all' || archFilterIt !== 'all') && (
+            <button onClick={() => { setArchSearch(''); setArchFilterStatus('all'); setArchFilterIb('all'); setArchFilterIt('all'); }} className="px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 rounded-xl bg-white/5 transition-colors flex items-center gap-1.5">
+              <Icon name="X" size={13} />Сбросить
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Типовых архитектур', value: architectures.length, icon: 'Blocks', from: 'from-indigo-500/20', to: 'to-indigo-500/5', border: 'border-indigo-500/20', text: 'text-indigo-400' },
@@ -386,7 +442,15 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
           ))}
         </div>
 
-        {architectures.length === 0 ? (
+        {(() => {
+          const q = archSearch.toLowerCase();
+          const filtered = architectures.filter(a =>
+            (archFilterStatus === 'all' || a.status === archFilterStatus) &&
+            (archFilterIb === 'all' || (archFilterIb === 'yes' ? a.approvedByIb : !a.approvedByIb)) &&
+            (archFilterIt === 'all' || (archFilterIt === 'yes' ? a.approvedByIt : !a.approvedByIt)) &&
+            (!q || a.id.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q))
+          );
+          return architectures.length === 0 ? (
           <div className="glass rounded-2xl p-16 text-center">
             <Icon name="Blocks" size={48} className="text-muted-foreground mx-auto mb-4" />
             <div className="text-lg font-oswald text-muted-foreground">Типовые архитектуры не добавлены</div>
@@ -395,9 +459,15 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
               <Icon name="Plus" size={16} />Добавить первую
             </button>
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="glass rounded-2xl p-10 text-center">
+            <Icon name="SearchX" size={36} className="text-muted-foreground mx-auto mb-3" />
+            <div className="text-sm font-oswald text-muted-foreground">Ничего не найдено</div>
+            <button onClick={() => { setArchSearch(''); setArchFilterStatus('all'); setArchFilterIb('all'); setArchFilterIt('all'); }} className="mt-3 text-xs text-indigo-400 hover:underline">Сбросить фильтры</button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {architectures.map((arch, i) => {
+            {filtered.map((arch, i) => {
               const sc = statusCfg(arch.status);
               const domain = techDomains.find(d => d.id === arch.techDomainId);
               return (
@@ -439,7 +509,8 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
               );
             })}
           </div>
-        )}
+        );
+        })()}
       </div>
     );
 

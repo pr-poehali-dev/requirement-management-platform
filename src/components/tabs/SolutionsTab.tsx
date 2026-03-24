@@ -181,6 +181,8 @@ const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
     const [selected, setSelected] = useState<TechnicalSolution | null>(null);
     const [form, setForm] = useState({ ...emptySolutionForm });
     const [tagInput, setTagInput] = useState('');
+    const [solSearch, setSolSearch] = useState('');
+    const [solFilterStatus, setSolFilterStatus] = useState<SolutionStatus | 'all'>('all');
 
     useImperativeHandle(ref, () => ({
       isOnSubpage: view !== 'list',
@@ -230,6 +232,38 @@ const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
         {/* LIST */}
         {view === 'list' && (
           <div className="animate-fade-in">
+            {/* Search + Filter */}
+            <div className="flex gap-3 mb-6 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
+                <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  value={solSearch}
+                  onChange={e => setSolSearch(e.target.value)}
+                  placeholder="Поиск по ID, названию, описанию..."
+                  className="w-full pl-9 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 transition-colors"
+                />
+                {solSearch && (
+                  <button onClick={() => setSolSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    <Icon name="X" size={14} />
+                  </button>
+                )}
+              </div>
+              <select
+                value={solFilterStatus}
+                onChange={e => setSolFilterStatus(e.target.value as SolutionStatus | 'all')}
+                className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-emerald-500/50 transition-colors"
+              >
+                <option value="all">Все статусы</option>
+                {SOLUTION_STATUSES.map(s => (
+                  <option key={s} value={s}>{SOLUTION_STATUS_CONFIG[s].label}</option>
+                ))}
+              </select>
+              {(solSearch || solFilterStatus !== 'all') && (
+                <button onClick={() => { setSolSearch(''); setSolFilterStatus('all'); }} className="px-3 py-2.5 text-xs text-muted-foreground hover:text-foreground border border-white/10 rounded-xl bg-white/5 transition-colors flex items-center gap-1.5">
+                  <Icon name="X" size={13} />Сбросить
+                </button>
+              )}
+            </div>
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
               {[
@@ -247,7 +281,13 @@ const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
               ))}
             </div>
 
-            {solutions.length === 0 ? (
+            {(() => {
+              const q = solSearch.toLowerCase();
+              const filtered = solutions.filter(s =>
+                (solFilterStatus === 'all' || s.status === solFilterStatus) &&
+                (!q || s.id.toLowerCase().includes(q) || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
+              );
+              return solutions.length === 0 ? (
               <div className="glass rounded-2xl p-16 text-center animate-fade-in">
                 <Icon name="LayoutGrid" size={48} className="text-muted-foreground mx-auto mb-4" />
                 <div className="text-lg font-oswald text-muted-foreground">Технические решения не добавлены</div>
@@ -256,9 +296,15 @@ const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
                   <Icon name="Plus" size={16} />Добавить первое
                 </button>
               </div>
+            ) : filtered.length === 0 ? (
+              <div className="glass rounded-2xl p-10 text-center animate-fade-in">
+                <Icon name="SearchX" size={36} className="text-muted-foreground mx-auto mb-3" />
+                <div className="text-sm font-oswald text-muted-foreground">Ничего не найдено</div>
+                <button onClick={() => { setSolSearch(''); setSolFilterStatus('all'); }} className="mt-3 text-xs text-emerald-400 hover:underline">Сбросить фильтры</button>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {solutions.map((sol, i) => {
+                {filtered.map((sol, i) => {
                   const sc = statusCfg(sol.status);
                   return (
                     <div key={sol.id} onClick={() => openDetail(sol)}
@@ -300,7 +346,8 @@ const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
                   );
                 })}
               </div>
-            )}
+            );
+            })()}
           </div>
         )}
 

@@ -25,6 +25,19 @@ interface Technology {
   updatedAt: string;
 }
 
+type DomainStatus = 'active' | 'draft' | 'archived' | 'review';
+
+interface OrgDomain {
+  id: string;
+  name: string;
+  version: string;
+  owner: string;
+  status: DomainStatus;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Requirement {
   id: string;
   title: string;
@@ -130,16 +143,47 @@ const emptyTechForm = {
   name: '', description: '', version: '',
 };
 
+const emptyDomainForm = {
+  name: '', version: '1.0', owner: '', status: 'draft' as DomainStatus, description: '',
+};
+
+const DOMAIN_STATUS_CONFIG: Record<DomainStatus, { label: string; color: string }> = {
+  active: { label: 'Активен', color: 'text-green-400 bg-green-400/10 border-green-400/30' },
+  draft: { label: 'Черновик', color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' },
+  review: { label: 'На ревью', color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30' },
+  archived: { label: 'В архиве', color: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
+};
+
+const MOCK_DOMAINS: OrgDomain[] = [
+  {
+    id: 'DOM-001', name: 'Управление клиентами', version: '2.0', owner: 'Мария Иванова',
+    status: 'active', description: 'Домен отвечает за жизненный цикл клиента: онбординг, профиль, сегментация и взаимодействие с CRM-системой.',
+    createdAt: '2024-01-10', updatedAt: '2024-02-18',
+  },
+  {
+    id: 'DOM-002', name: 'Платёжный домен', version: '1.3', owner: 'Алексей Петров',
+    status: 'review', description: 'Обработка платежей, интеграция с платёжными шлюзами, управление транзакциями и возвратами.',
+    createdAt: '2024-01-20', updatedAt: '2024-02-22',
+  },
+];
+
 // ─── View types ───────────────────────────────────────────────────────────────
 
-type Tab = 'requirements' | 'technologies';
+type Tab = 'requirements' | 'technologies' | 'domains';
 type ReqView = 'list' | 'detail' | 'create' | 'edit';
 type TechView = 'list' | 'detail' | 'create' | 'edit';
+type DomainView = 'list' | 'detail' | 'create' | 'edit';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Index = () => {
   const [tab, setTab] = useState<Tab>('requirements');
+
+  // Domains state
+  const [domains, setDomains] = useState<OrgDomain[]>(MOCK_DOMAINS);
+  const [domainView, setDomainView] = useState<DomainView>('list');
+  const [selectedDomain, setSelectedDomain] = useState<OrgDomain | null>(null);
+  const [domainForm, setDomainForm] = useState({ ...emptyDomainForm });
 
   // Requirements state
   const [requirements, setRequirements] = useState<Requirement[]>(MOCK_REQUIREMENTS);
@@ -266,11 +310,36 @@ const Index = () => {
 
   const delayClass = (i: number) => ['', 'delay-100', 'delay-200', 'delay-300', 'delay-400'][Math.min(i, 4)];
 
-  const isOnSubpage = (tab === 'requirements' && reqView !== 'list') || (tab === 'technologies' && techView !== 'list');
+  // ── Domain helpers ──
+
+  function openDomainDetail(domain: OrgDomain) { setSelectedDomain(domain); setDomainView('detail'); }
+  function openDomainCreate() { setDomainForm({ ...emptyDomainForm }); setDomainView('create'); }
+  function openDomainEdit(domain: OrgDomain) {
+    setDomainForm({ name: domain.name, version: domain.version, owner: domain.owner, status: domain.status, description: domain.description });
+    setSelectedDomain(domain); setDomainView('edit');
+  }
+  function saveDomainCreate() {
+    const now = new Date().toISOString().split('T')[0];
+    setDomains(prev => [{ ...domainForm, id: `DOM-${String(prev.length + 1).padStart(3, '0')}`, createdAt: now, updatedAt: now }, ...prev]);
+    setDomainView('list');
+  }
+  function saveDomainEdit() {
+    if (!selectedDomain) return;
+    const now = new Date().toISOString().split('T')[0];
+    setDomains(prev => prev.map(d => d.id === selectedDomain.id ? { ...d, ...domainForm, updatedAt: now } : d));
+    setDomainView('list');
+  }
+  function deleteDomain(id: string) { setDomains(prev => prev.filter(d => d.id !== id)); setDomainView('list'); }
+
+  const isOnSubpage =
+    (tab === 'requirements' && reqView !== 'list') ||
+    (tab === 'technologies' && techView !== 'list') ||
+    (tab === 'domains' && domainView !== 'list');
 
   function goBack() {
     if (tab === 'requirements') setReqView('list');
-    else setTechView('list');
+    else if (tab === 'technologies') setTechView('list');
+    else setDomainView('list');
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -281,7 +350,7 @@ const Index = () => {
       {/* Header */}
       <header className="glass-strong sticky top-0 z-50 border-b border-white/8">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setReqView('list'); setTechView('list'); }}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setReqView('list'); setTechView('list'); setDomainView('list'); }}>
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shadow-lg">
               <Icon name="Database" size={18} className="text-white" />
             </div>
@@ -307,6 +376,11 @@ const Index = () => {
                 <Icon name="Plus" size={16} />Новая технология
               </button>
             )}
+            {!isOnSubpage && tab === 'domains' && (
+              <button onClick={openDomainCreate} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-sm font-medium text-white hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/20">
+                <Icon name="Plus" size={16} />Новый домен
+              </button>
+            )}
           </div>
         </div>
 
@@ -314,9 +388,10 @@ const Index = () => {
         {!isOnSubpage && (
           <div className="max-w-7xl mx-auto px-6 pb-0 flex gap-1">
             {([
-              { key: 'requirements', label: 'Требования', icon: 'ListChecks' },
-              { key: 'technologies', label: 'Технологии', icon: 'Cpu' },
-            ] as { key: Tab; label: string; icon: string }[]).map(t => (
+              { key: 'requirements', label: 'Требования', icon: 'ListChecks', count: requirements.length },
+              { key: 'technologies', label: 'Технологии', icon: 'Cpu', count: technologies.length },
+              { key: 'domains', label: 'Орг. домены', icon: 'Building2', count: domains.length },
+            ] as { key: Tab; label: string; icon: string; count: number }[]).map(t => (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
@@ -329,7 +404,7 @@ const Index = () => {
                 <Icon name={t.icon} size={15} />
                 {t.label}
                 <span className={`text-xs px-1.5 py-0.5 rounded-md ${tab === t.key ? 'bg-cyan-400/20 text-cyan-400' : 'bg-white/8 text-muted-foreground'}`}>
-                  {t.key === 'requirements' ? requirements.length : technologies.length}
+                  {t.count}
                 </span>
               </button>
             ))}
@@ -879,6 +954,187 @@ const Index = () => {
                       {techView === 'create' ? 'Создать технологию' : 'Сохранить изменения'}
                     </button>
                     <button onClick={() => setTechView('list')} className="px-6 py-3 glass rounded-xl text-sm text-muted-foreground hover:text-foreground transition-all">Отмена</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ══════════════════ DOMAINS TAB ══════════════════ */}
+        {tab === 'domains' && (
+          <>
+            {/* LIST */}
+            {domainView === 'list' && (
+              <div className="animate-fade-in">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                  {[
+                    { label: 'Всего доменов', value: domains.length, icon: 'Building2', colorFrom: 'from-emerald-500/20', colorTo: 'to-emerald-500/5', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+                    { label: 'Активных', value: domains.filter(d => d.status === 'active').length, icon: 'CheckCircle', colorFrom: 'from-green-500/20', colorTo: 'to-green-500/5', border: 'border-green-500/20', text: 'text-green-400' },
+                    { label: 'На ревью', value: domains.filter(d => d.status === 'review').length, icon: 'Eye', colorFrom: 'from-cyan-500/20', colorTo: 'to-cyan-500/5', border: 'border-cyan-500/20', text: 'text-cyan-400' },
+                  ].map((s, i) => (
+                    <div key={s.label} className={`glass rounded-2xl p-5 border ${s.border} bg-gradient-to-br ${s.colorFrom} ${s.colorTo} animate-fade-in ${delayClass(i)}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{s.label}</span>
+                        <Icon name={s.icon} size={18} className={s.text} />
+                      </div>
+                      <div className={`font-oswald text-4xl font-semibold ${s.text}`}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {domains.length === 0 ? (
+                  <div className="glass rounded-2xl p-16 text-center animate-fade-in">
+                    <Icon name="Building2" size={48} className="text-muted-foreground mx-auto mb-4" />
+                    <div className="text-lg font-oswald text-muted-foreground">Домены не добавлены</div>
+                    <button onClick={openDomainCreate} className="mt-4 flex items-center gap-2 mx-auto px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-sm font-medium text-white">
+                      <Icon name="Plus" size={16} />Добавить первый
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {domains.map((domain, i) => {
+                      const st = DOMAIN_STATUS_CONFIG[domain.status];
+                      return (
+                        <div key={domain.id} onClick={() => openDomainDetail(domain)}
+                          className={`glass rounded-2xl p-6 cursor-pointer card-hover border border-white/8 animate-fade-in ${delayClass(i)}`}>
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-oswald text-xs text-muted-foreground tracking-widest">{domain.id}</span>
+                              </div>
+                              <h3 className="font-oswald text-xl font-semibold text-foreground">{domain.name}</h3>
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2 py-0.5 rounded-full">v{domain.version}</span>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full border font-medium ${st.color}`}>{st.label}</span>
+                              </div>
+                            </div>
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/30 to-teal-500/30 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                              <Icon name="Building2" size={20} className="text-emerald-400" />
+                            </div>
+                          </div>
+                          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-4">{domain.description}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <Icon name="User" size={13} className="text-emerald-400" />{domain.owner || '—'}
+                            </span>
+                            <span className="flex items-center gap-1 ml-auto">
+                              <Icon name="Calendar" size={12} />{domain.updatedAt}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DETAIL */}
+            {domainView === 'detail' && selectedDomain && (
+              <div className="animate-fade-in max-w-3xl">
+                <div className="glass rounded-3xl p-8 mb-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="font-oswald text-sm text-muted-foreground tracking-widest">{selectedDomain.id}</span>
+                      </div>
+                      <h1 className="font-oswald text-3xl font-semibold text-foreground mb-3">{selectedDomain.name}</h1>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-1 rounded-full">v{selectedDomain.version}</span>
+                        <span className={`text-sm px-3 py-1 rounded-full border font-medium ${DOMAIN_STATUS_CONFIG[selectedDomain.status].color}`}>
+                          {DOMAIN_STATUS_CONFIG[selectedDomain.status].label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => openDomainEdit(selectedDomain)} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm hover:border-emerald-500/40 transition-all">
+                        <Icon name="Pencil" size={15} />Редактировать
+                      </button>
+                      <button onClick={() => deleteDomain(selectedDomain.id)} className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400 hover:bg-red-500/20 transition-all">
+                        <Icon name="Trash2" size={15} />Удалить
+                      </button>
+                    </div>
+                  </div>
+                  <div className="border-t border-white/8 pt-6">
+                    <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-3">Описание</h2>
+                    <p className="text-foreground leading-relaxed text-[15px]">{selectedDomain.description}</p>
+                  </div>
+                </div>
+
+                <div className="glass rounded-2xl p-6">
+                  <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">Информация</h2>
+                  <div className="space-y-3">
+                    {[
+                      { icon: 'User', label: 'Владелец', value: selectedDomain.owner || '—' },
+                      { icon: 'Tag', label: 'Версия', value: `v${selectedDomain.version}` },
+                      { icon: 'Calendar', label: 'Создано', value: selectedDomain.createdAt },
+                      { icon: 'RefreshCw', label: 'Обновлено', value: selectedDomain.updatedAt },
+                    ].map(item => (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Icon name={item.icon} size={14} />{item.label}
+                        </span>
+                        <span className="text-sm text-foreground font-medium">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CREATE / EDIT */}
+            {(domainView === 'create' || domainView === 'edit') && (
+              <div className="animate-fade-in max-w-3xl">
+                <div className="mb-6">
+                  <h1 className="font-oswald text-3xl font-semibold" style={{ background: 'linear-gradient(135deg, #10b981, #14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                    {domainView === 'create' ? 'Новый орг. домен' : 'Редактирование'}
+                  </h1>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {domainView === 'create' ? 'Создайте карточку организационного домена' : `Изменение ${selectedDomain?.id}`}
+                  </p>
+                </div>
+                <div className="glass rounded-3xl p-8 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Название *</label>
+                      <input value={domainForm.name} onChange={e => setDomainForm(f => ({ ...f, name: e.target.value }))} placeholder="Название домена"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-muted-foreground/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Версия</label>
+                      <input value={domainForm.version} onChange={e => setDomainForm(f => ({ ...f, version: e.target.value }))} placeholder="1.0"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-muted-foreground/50" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Владелец</label>
+                      <input value={domainForm.owner} onChange={e => setDomainForm(f => ({ ...f, owner: e.target.value }))} placeholder="Имя владельца домена"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-muted-foreground/50" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Статус</label>
+                      <select value={domainForm.status} onChange={e => setDomainForm(f => ({ ...f, status: e.target.value as DomainStatus }))}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500/50 cursor-pointer">
+                        {Object.entries(DOMAIN_STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wider font-oswald">Описание</label>
+                    <textarea value={domainForm.description} onChange={e => setDomainForm(f => ({ ...f, description: e.target.value }))} rows={5}
+                      placeholder="Назначение домена, границы ответственности, ключевые процессы..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:border-emerald-500/50 transition-all resize-none placeholder:text-muted-foreground/50" />
+                  </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button onClick={domainView === 'create' ? saveDomainCreate : saveDomainEdit}
+                      disabled={!domainForm.name.trim()}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl text-sm font-medium text-white hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
+                      <Icon name="Save" size={16} />
+                      {domainView === 'create' ? 'Создать домен' : 'Сохранить изменения'}
+                    </button>
+                    <button onClick={() => setDomainView('list')} className="px-6 py-3 glass rounded-xl text-sm text-muted-foreground hover:text-foreground transition-all">Отмена</button>
                   </div>
                 </div>
               </div>

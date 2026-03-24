@@ -1,9 +1,10 @@
-import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import mermaid from 'mermaid';
 import Icon from '@/components/ui/icon';
 import {
   TypicalArchitecture, TechDomain, TechnicalSolution, Requirement,
   ArchView, ArchStatus, MermaidScheme,
-  ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG, PRIORITY_CONFIG, STATUS_CONFIG,
+  ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG, PRIORITY_CONFIG, STATUS_CONFIG, CATEGORY_CONFIG,
   emptyArchForm, delayClass,
 } from '@/types';
 
@@ -32,10 +33,43 @@ function ApprovalBadge({ approved, label }: { approved: boolean; label: string }
 
 const ARCH_STATUSES: ArchStatus[] = ['draft', 'review', 'approved', 'rejected', 'archived'];
 
+// ─── MermaidDiagram ────────────────────────────────────────────────────────────
+
+mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+
+function MermaidDiagram({ content, id }: { content: string; id: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [svg, setSvg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setError(null);
+    setSvg(null);
+    mermaid.render(`mermaid-${id}`, content)
+      .then(({ svg: rendered }) => { if (!cancelled) setSvg(rendered); })
+      .catch(e => { if (!cancelled) setError(String(e?.message ?? e)); });
+    return () => { cancelled = true; };
+  }, [content, id]);
+
+  if (error) return (
+    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400 font-mono whitespace-pre-wrap">{error}</div>
+  );
+  if (!svg) return (
+    <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground text-sm">
+      <Icon name="Loader2" size={16} className="animate-spin" />Рендеринг…
+    </div>
+  );
+  return (
+    <div ref={ref} className="overflow-auto" dangerouslySetInnerHTML={{ __html: svg }} />
+  );
+}
+
 // ─── MermaidViewer ─────────────────────────────────────────────────────────────
 
 function MermaidViewer({ schemes }: { schemes: MermaidScheme[] }) {
   const [active, setActive] = useState(0);
+  const [showCode, setShowCode] = useState(false);
 
   if (schemes.length === 0) {
     return (
@@ -54,16 +88,24 @@ function MermaidViewer({ schemes }: { schemes: MermaidScheme[] }) {
         <h3 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground">
           Схемы Mermaid <span className="text-indigo-400">({schemes.length})</span>
         </h3>
-        {schemes.length > 1 && (
-          <div className="flex gap-1">
-            {schemes.map((s, i) => (
-              <button key={s.id} onClick={() => setActive(i)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${active === i ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-400' : 'glass text-muted-foreground hover:text-foreground'}`}>
-                {i + 1}. {s.name.length > 16 ? s.name.slice(0, 16) + '…' : s.name}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCode(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showCode ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-400' : 'glass text-muted-foreground hover:text-foreground'}`}
+          >
+            <Icon name="Code2" size={12} />{showCode ? 'Диаграмма' : 'Код'}
+          </button>
+          {schemes.length > 1 && (
+            <div className="flex gap-1">
+              {schemes.map((s, i) => (
+                <button key={s.id} onClick={() => setActive(i)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${active === i ? 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-400' : 'glass text-muted-foreground hover:text-foreground'}`}>
+                  {i + 1}. {s.name.length > 16 ? s.name.slice(0, 16) + '…' : s.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div className="bg-[#0d1117] rounded-xl border border-white/8 overflow-hidden">
         <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/5 bg-white/[0.02]">
@@ -71,10 +113,149 @@ function MermaidViewer({ schemes }: { schemes: MermaidScheme[] }) {
           <span className="text-xs text-muted-foreground font-mono">{cur.name}</span>
           <span className="ml-auto text-xs text-muted-foreground">Загружено: {cur.uploadedAt}</span>
         </div>
-        <pre className="p-5 text-xs text-emerald-300 font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
-          {cur.content}
-        </pre>
+        <div className="p-4 min-h-[120px]">
+          {showCode ? (
+            <pre className="text-xs text-emerald-300 font-mono overflow-x-auto leading-relaxed whitespace-pre-wrap break-words max-h-72 overflow-y-auto">
+              {cur.content}
+            </pre>
+          ) : (
+            <MermaidDiagram key={cur.id} content={cur.content} id={cur.id} />
+          )}
+        </div>
       </div>
+    </div>
+  );
+}
+
+// ─── LinkedRequirements ────────────────────────────────────────────────────────
+
+interface LRProps {
+  requirementIds: string[];
+  requirements: Requirement[];
+  title?: string;
+}
+
+function LinkedRequirements({ requirementIds, requirements, title = 'Привязанные требования' }: LRProps) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const interactionLabel: Record<string, string> = {
+    'Обязательный': 'Обяз.',
+    'Рекомендуется': 'Рек.',
+    'Не требуется': '—',
+  };
+
+  const items = requirementIds.map(id => requirements.find(r => r.id === id)).filter(Boolean) as Requirement[];
+
+  return (
+    <div className="glass rounded-2xl p-6">
+      <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">
+        {title} <span className="text-cyan-400">({items.length})</span>
+      </h2>
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Требования отсутствуют</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map(req => {
+            const isOpen = expandedId === req.id;
+            const catCfg = CATEGORY_CONFIG[req.category];
+            const statusCfg = STATUS_CONFIG[req.status];
+            return (
+              <div key={req.id} className="glass rounded-xl border border-white/5 overflow-hidden transition-all">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <span className="text-xs font-oswald text-muted-foreground tracking-widest shrink-0 w-20">{req.id}</span>
+                  <span className="text-sm text-foreground flex-1 min-w-0 truncate font-medium">{req.title}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Badge className={PRIORITY_CONFIG[req.priority].color}>{PRIORITY_CONFIG[req.priority].label}</Badge>
+                    <Badge className={statusCfg.color}>{statusCfg.label}</Badge>
+                    <button
+                      onClick={() => setExpandedId(isOpen ? null : req.id)}
+                      className="p-1 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-all"
+                    >
+                      <Icon name={isOpen ? 'ChevronUp' : 'ChevronDown'} size={14} />
+                    </button>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className="border-t border-white/5 px-4 py-4 space-y-4 bg-white/[0.02]">
+                    {req.description && (
+                      <div>
+                        <p className="text-xs text-muted-foreground font-oswald uppercase tracking-wider mb-1">Описание</p>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{req.description}</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Категория</p>
+                        <span className={`text-xs font-medium ${catCfg.color} flex items-center gap-1`}>
+                          <Icon name={catCfg.icon as string} size={12} />{catCfg.label}
+                        </span>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Версия требования</p>
+                        <span className="text-xs text-foreground font-mono">{req.version || '—'}</span>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Скор. категория</p>
+                        <span className="text-xs text-foreground font-mono">{req.scoringCategory ?? '—'}</span>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Скор. вес</p>
+                        <span className="text-xs text-foreground font-mono">{req.scoringWeight ?? '—'}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-2">Среда применения</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(req.environments ?? []).length > 0
+                            ? req.environments.map(e => <Badge key={e} className="text-cyan-400 border-cyan-400/20 bg-cyan-400/5">{e}</Badge>)
+                            : <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
+                      </div>
+                      <div className="bg-white/5 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-2">Стадии приложения</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(req.appStages ?? []).length > 0
+                            ? req.appStages.map(s => <Badge key={s} className="text-violet-400 border-violet-400/20 bg-violet-400/5">{s}</Badge>)
+                            : <span className="text-xs text-muted-foreground">—</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-3">
+                      <p className="text-xs text-muted-foreground mb-3">Взаимодействия</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {[
+                          { label: 'Внутр. с ИОД', value: req.internalWithIod },
+                          { label: 'Внутр. без ИОД', value: req.internalWithoutIod },
+                          { label: 'Внешн. с ИОД', value: req.externalWithIod },
+                          { label: 'Внешн. без ИОД', value: req.externalWithoutIod },
+                        ].map(({ label, value }) => (
+                          <div key={label} className="text-center">
+                            <p className="text-xs text-muted-foreground mb-1">{label}</p>
+                            <span className={`text-xs font-medium ${
+                              value === 'Обязательный' ? 'text-red-400' :
+                              value === 'Рекомендуется' ? 'text-yellow-400' : 'text-muted-foreground'
+                            }`}>
+                              {interactionLabel[value] ?? value ?? '—'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-muted-foreground">Закупки:</span>
+                      <Badge className={req.procurement === 'Применимо' ? 'text-green-400 border-green-400/20 bg-green-400/5' : 'text-slate-400 border-slate-400/20 bg-slate-400/5'}>
+                        {req.procurement ?? '—'}
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -180,9 +361,8 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
     const getDomainName = (id: string) => techDomains.find(d => d.id === id)?.name ?? '—';
 
     // Получить список требований из привязанных решений
-    function getRelatedRequirements(solutionIds: string[]) {
-      const techIds = new Set<string>();
-      solutions.filter(s => solutionIds.includes(s.id)).forEach(s => s.technologyIds.forEach(t => techIds.add(t)));
+    function getRelatedRequirements(archSolutionIds: string[]) {
+      if (archSolutionIds.length === 0) return [];
       return requirements;
     }
 
@@ -378,44 +558,11 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
           </div>
 
           {/* Requirements from linked solutions */}
-          <div className="glass rounded-2xl p-6">
-            <h2 className="font-oswald text-sm uppercase tracking-wider text-muted-foreground mb-4">
-              Список требований из связанных технических решений <span className="text-cyan-400">({linkedReqs.length})</span>
-            </h2>
-            {linkedReqs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Требования отсутствуют</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      {['Нумерация', 'Название', 'Категория', 'Приоритет', 'Статус', 'Автор'].map(h => (
-                        <th key={h} className="text-left py-2 px-3 text-xs font-oswald uppercase tracking-wider text-muted-foreground">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {linkedReqs.map(req => {
-                      const prio = PRIORITY_CONFIG[req.priority];
-                      const status = STATUS_CONFIG[req.status];
-                      return (
-                        <tr key={req.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className="py-2.5 px-3 font-oswald text-xs text-muted-foreground tracking-widest">{req.id}</td>
-                          <td className="py-2.5 px-3 text-foreground font-medium max-w-[200px]">
-                            <span className="truncate block">{req.title}</span>
-                          </td>
-                          <td className="py-2.5 px-3 text-xs text-muted-foreground">{req.category}</td>
-                          <td className="py-2.5 px-3"><Badge className={prio.color}>{prio.label}</Badge></td>
-                          <td className="py-2.5 px-3"><Badge className={status.color}>{status.label}</Badge></td>
-                          <td className="py-2.5 px-3 text-xs text-muted-foreground">{req.author}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <LinkedRequirements
+            requirementIds={linkedReqs.map(r => r.id)}
+            requirements={requirements}
+            title="Список требований из связанных технических решений"
+          />
         </div>
       );
     }

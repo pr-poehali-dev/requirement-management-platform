@@ -8,6 +8,7 @@ import {
   Technology, TechnicalSolution, TypicalArchitecture, TechDomain, Requirement,
   ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG, PRIORITY_CONFIG,
 } from '@/types';
+import { exportArchToPdf, exportArchToWord } from '@/services/archExport';
 
 
 
@@ -39,10 +40,12 @@ function MermaidDiagram({ content, id }: { content: string; id: string }) {
 
 // ─── Detail панели ─────────────────────────────────────────────────────────────
 
-function ArchDetail({ arch, solutions, techDomains, onClose, onOpenSolution }: {
+function ArchDetail({ arch, solutions, technologies, techDomains, requirements, onClose, onOpenSolution }: {
   arch: TypicalArchitecture;
   solutions: TechnicalSolution[];
+  technologies: Technology[];
   techDomains: TechDomain[];
+  requirements: Requirement[];
   onClose: () => void;
   onOpenSolution: (s: TechnicalSolution) => void;
 }) {
@@ -50,6 +53,19 @@ function ArchDetail({ arch, solutions, techDomains, onClose, onOpenSolution }: {
   const domain = techDomains.find(d => d.id === arch.techDomainId);
   const linkedSolutions = solutions.filter(s => arch.solutionIds.includes(s.id));
   const [activeScheme, setActiveScheme] = useState(0);
+  const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
+
+  const exportCtx = { arch, solutions, technologies, techDomains, requirements };
+
+  async function handleExportPdf() {
+    setExporting('pdf');
+    try { exportArchToPdf(exportCtx); } finally { setExporting(null); }
+  }
+
+  async function handleExportWord() {
+    setExporting('word');
+    try { await exportArchToWord(exportCtx); } finally { setExporting(null); }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end">
@@ -65,9 +81,29 @@ function ArchDetail({ arch, solutions, techDomains, onClose, onOpenSolution }: {
               <h2 className="text-base font-semibold text-foreground leading-tight">{arch.name}</h2>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
-            <Icon name="X" size={16} className="text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportPdf}
+              disabled={!!exporting}
+              title="Экспорт в PDF"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-white/10 bg-white/5 text-muted-foreground hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/5 transition-all disabled:opacity-50"
+            >
+              {exporting === 'pdf' ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="FileText" size={13} />}
+              PDF
+            </button>
+            <button
+              onClick={handleExportWord}
+              disabled={!!exporting}
+              title="Экспорт в Word"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-white/10 bg-white/5 text-muted-foreground hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-500/5 transition-all disabled:opacity-50"
+            >
+              {exporting === 'word' ? <Icon name="Loader" size={13} className="animate-spin" /> : <Icon name="FileDown" size={13} />}
+              Word
+            </button>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
+              <Icon name="X" size={16} className="text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 p-6 space-y-6">
@@ -672,7 +708,9 @@ export default function Catalog() {
         <ArchDetail
           arch={selectedArch}
           solutions={solutions}
+          technologies={technologies}
           techDomains={techDomains}
+          requirements={requirements}
           onClose={() => setSelectedArch(null)}
           onOpenSolution={s => { setSelectedArch(null); setSelectedSol(s); }}
         />

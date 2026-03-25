@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import mermaid from 'mermaid';
@@ -394,10 +393,9 @@ function TechCard({ tech, onClick }: { tech: Technology; onClick: () => void }) 
   );
 }
 
-// ─── Главная страница Каталог ─────────────────────────────────────────────────
+// ─── Таб Каталог ─────────────────────────────────────────────────────────────
 
 export default function Catalog() {
-  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -452,79 +450,60 @@ export default function Catalog() {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-background/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <button onClick={() => navigate('/')} className="w-8 h-8 rounded-lg hover:bg-white/10 flex items-center justify-center transition-colors">
-              <Icon name="ArrowLeft" size={16} className="text-muted-foreground" />
-            </button>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-blue-500 flex items-center justify-center">
-              <Icon name="BookOpen" size={15} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-foreground leading-tight">Каталог</h1>
-              <p className="text-xs text-muted-foreground">{totalCount} элементов</p>
-            </div>
+    <div className="space-y-6">
+      {/* Поиск + фильтр + якоря */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Поиск по архитектурам, решениям и технологиям..."
+              className="w-full pl-9 pr-8 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-white/25 transition-colors"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <Icon name="X" size={12} />
+              </button>
+            )}
           </div>
-
-          {/* Поиск + фильтр */}
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
-            <div className="relative flex-1">
-              <Icon name="Search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Поиск по архитектурам, решениям и технологиям..."
-                className="w-full pl-9 pr-8 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-white/25 transition-colors"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <Icon name="X" size={12} />
-                </button>
-              )}
-            </div>
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-white/20 flex-shrink-0"
-            >
-              {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
-          </div>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-white/20 flex-shrink-0"
+          >
+            {statusOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
         </div>
-        {/* Якорное меню */}
         {!isEmpty && (
-          <div className="border-t border-white/5 bg-background/60">
-            <div className="max-w-7xl mx-auto px-6 py-2 flex items-center gap-1">
-              {filteredArchitectures.length > 0 && (
-                <button onClick={() => scrollTo(archRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-pink-400 hover:bg-pink-500/10 transition-all">
-                  <Icon name="Blocks" size={12} className="text-pink-400" />
-                  Архитектуры
-                  <span className="font-mono opacity-60">{filteredArchitectures.length}</span>
-                </button>
-              )}
-              {filteredSolutions.length > 0 && (
-                <button onClick={() => scrollTo(solRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-all">
-                  <Icon name="LayoutGrid" size={12} className="text-blue-400" />
-                  Решения
-                  <span className="font-mono opacity-60">{filteredSolutions.length}</span>
-                </button>
-              )}
-              {filteredTechnologies.length > 0 && (
-                <button onClick={() => scrollTo(techRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-all">
-                  <Icon name="Cpu" size={12} className="text-cyan-400" />
-                  Технологии
-                  <span className="font-mono opacity-60">{filteredTechnologies.length}</span>
-                </button>
-              )}
-            </div>
+          <div className="flex items-center gap-1">
+            {filteredArchitectures.length > 0 && (
+              <button onClick={() => scrollTo(archRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-pink-400 hover:bg-pink-500/10 transition-all">
+                <Icon name="Blocks" size={12} className="text-pink-400" />
+                Архитектуры
+                <span className="font-mono opacity-60">{filteredArchitectures.length}</span>
+              </button>
+            )}
+            {filteredSolutions.length > 0 && (
+              <button onClick={() => scrollTo(solRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-all">
+                <Icon name="LayoutGrid" size={12} className="text-blue-400" />
+                Решения
+                <span className="font-mono opacity-60">{filteredSolutions.length}</span>
+              </button>
+            )}
+            {filteredTechnologies.length > 0 && (
+              <button onClick={() => scrollTo(techRef)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-cyan-400 hover:bg-cyan-500/10 transition-all">
+                <Icon name="Cpu" size={12} className="text-cyan-400" />
+                Технологии
+                <span className="font-mono opacity-60">{filteredTechnologies.length}</span>
+              </button>
+            )}
           </div>
         )}
-      </header>
+      </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-10">
+      <div className="space-y-10">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center py-32 text-muted-foreground gap-3">
             <Icon name="SearchX" size={40} className="opacity-20" />
@@ -581,7 +560,7 @@ export default function Catalog() {
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* Detail панели */}
       {selectedArch && (

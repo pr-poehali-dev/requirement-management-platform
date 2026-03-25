@@ -13,10 +13,11 @@ import TechnologiesTab, { TechnologiesTabHandle } from '@/components/tabs/Techno
 import DomainsTab, { DomainsTabHandle } from '@/components/tabs/DomainsTab';
 import SolutionsTab, { SolutionsTabHandle } from '@/components/tabs/SolutionsTab';
 import ArchitecturesTab, { ArchitecturesTabHandle } from '@/components/tabs/ArchitecturesTab';
+import Catalog from '@/pages/Catalog';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('domains');
+  const [tab, setTab] = useState<Tab>('catalog');
   const [isOnSubpage, setIsOnSubpage] = useState(false);
 
   const [requirements, setRequirements] = useLocalStorage('reqflow_requirements', MOCK_REQUIREMENTS);
@@ -109,10 +110,6 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/catalog')} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/20 transition-all">
-              <Icon name="BookOpen" size={15} />
-              Каталог
-            </button>
             <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/20 transition-all">
               <Icon name="Network" size={15} />
               Карта данных
@@ -122,7 +119,7 @@ const Index = () => {
                 <Icon name="ArrowLeft" size={16} />Назад
               </button>
             )}
-            {!isOnSubpage && (
+            {!isOnSubpage && tab !== 'catalog' && (
               <>
                 <button onClick={() => setIoOpen(true)} className="flex items-center gap-2 px-4 py-2.5 glass rounded-xl text-sm text-muted-foreground hover:text-foreground border border-white/10 hover:border-white/20 transition-all">
                   <Icon name="ArrowLeftRight" size={15} />
@@ -141,6 +138,7 @@ const Index = () => {
         {!isOnSubpage && (
           <div className="max-w-7xl mx-auto px-6 pb-0 flex gap-1 overflow-x-auto">
             {([
+              { key: 'catalog', label: 'Каталог', icon: 'BookOpen', count: architectures.length + solutions.length + technologies.length },
               { key: 'domains', label: 'Орг. домены', icon: 'Building2', count: domains.length },
               { key: 'techdomains', label: 'Тех. домены', icon: 'Server', count: techDomains.length },
               { key: 'requirements', label: 'Требования', icon: 'ListChecks', count: requirements.length },
@@ -169,6 +167,7 @@ const Index = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {tab === 'catalog' && <Catalog />}
         {tab === 'requirements' && (
           <RequirementsTab
             ref={reqTabRef}

@@ -176,130 +176,65 @@ function ArchDetail({ arch, solutions, technologies, techDomains, requirements, 
   );
 }
 
-function SolutionReqRow({ req, techName }: { req: Requirement; techName: string }) {
-  const [open, setOpen] = useState(false);
+const INTERACTION_COLOR = (v: string) =>
+  v === 'Обязательный' ? 'text-amber-400' : v === 'Рекомендуется' ? 'text-cyan-400' : 'text-muted-foreground';
+
+const ALL_REQ_COLUMNS = [
+  { key: 'id',                  label: 'Нумерация' },
+  { key: 'techName',            label: 'Технология' },
+  { key: 'category',            label: 'Категория' },
+  { key: 'title',               label: 'Название требования' },
+  { key: 'description',         label: 'Описание' },
+  { key: 'priority',            label: 'Приоритет' },
+  { key: 'status',              label: 'Статус' },
+  { key: 'tags',                label: 'Теги' },
+  { key: 'author',              label: 'Автор' },
+  { key: 'version',             label: 'Версия' },
+  { key: 'createdAt',           label: 'Создано' },
+  { key: 'updatedAt',           label: 'Обновлено' },
+  { key: 'environments',        label: 'Среды' },
+  { key: 'appStages',           label: 'Стадии' },
+  { key: 'externalWithIod',     label: 'Внеш. с ИОД' },
+  { key: 'externalWithoutIod',  label: 'Внеш. без ИОД' },
+  { key: 'internalWithIod',     label: 'Внутр. с ИОД' },
+  { key: 'internalWithoutIod',  label: 'Внутр. без ИОД' },
+  { key: 'procurement',         label: 'Закупки' },
+  { key: 'scoringCategory',     label: 'Скоринг (кат.)' },
+  { key: 'scoringWeight',       label: 'Скоринг (вес)' },
+] as const;
+
+type ReqColKey = typeof ALL_REQ_COLUMNS[number]['key'];
+
+const DEFAULT_COLS: ReqColKey[] = ['id', 'techName', 'category', 'title', 'description', 'priority', 'status'];
+
+function ReqTableCell({ colKey, req, techName }: { colKey: ReqColKey; req: Requirement; techName: string }) {
   const prio = PRIORITY_CONFIG[req.priority] ?? { label: req.priority, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
   const stat = STATUS_CONFIG[req.status] ?? { label: req.status, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
-  const cat = CATEGORY_CONFIG[req.category] ?? { label: req.category, icon: 'Circle', color: 'text-slate-400' };
-
-  const iodColor = (v: string) =>
-    v === 'Обязательный' ? 'text-amber-400' : v === 'Рекомендуется' ? 'text-cyan-400' : 'text-muted-foreground';
-
-  return (
-    <div className="border-b border-white/5 last:border-0">
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full grid text-left hover:bg-white/3 transition-colors group"
-        style={{ gridTemplateColumns: '80px 100px 130px 1fr 100px 90px 28px' }}
-      >
-        <div className="px-3 py-2.5 flex items-start">
-          <span className="text-[11px] font-mono text-muted-foreground">{req.id}</span>
-        </div>
-        <div className="px-2 py-2.5 flex items-start">
-          <Badge className="text-slate-400 bg-slate-400/10 border-slate-400/20 text-[10px] truncate max-w-full">{techName}</Badge>
-        </div>
-        <div className="px-2 py-2.5 flex items-start">
-          <span className={`flex items-center gap-1 text-[11px] ${cat.color}`}>
-            <Icon name={cat.icon} size={10} className="flex-shrink-0" />
-            <span className="truncate">{cat.label}</span>
-          </span>
-        </div>
-        <div className="px-2 py-2.5 min-w-0">
-          <p className="text-xs font-medium text-foreground group-hover:text-blue-300 transition-colors leading-snug truncate">{req.title}</p>
-          {!open && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{req.description}</p>}
-        </div>
-        <div className="px-2 py-2.5 flex items-start">
-          <Badge className={`${prio.color} text-[10px]`}>{prio.label}</Badge>
-        </div>
-        <div className="px-2 py-2.5 flex items-start">
-          <Badge className={`${stat.color} text-[10px]`}>{stat.label}</Badge>
-        </div>
-        <div className="px-1 py-2.5 flex items-start justify-center">
-          <Icon name={open ? 'ChevronUp' : 'ChevronDown'} size={13} className="text-muted-foreground group-hover:text-blue-400 transition-colors mt-0.5" />
-        </div>
-      </button>
-
-      {open && (
-        <div className="mx-3 mb-3 rounded-xl border border-white/10 bg-white/3 p-4 space-y-4">
-          <p className="text-xs text-muted-foreground leading-relaxed">{req.description}</p>
-
-          {req.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {req.tags.map(t => <Badge key={t} className="text-slate-400 bg-slate-400/10 border-slate-400/20 text-[10px]">#{t}</Badge>)}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-xs border-t border-white/10 pt-3">
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Автор</span>
-              <span className="text-foreground text-right">{req.author}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Версия</span>
-              <span className="text-foreground font-mono">v{req.version}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Создано</span>
-              <span className="text-foreground">{req.createdAt}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Обновлено</span>
-              <span className="text-foreground">{req.updatedAt}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Закупки</span>
-              <span className={req.procurement === 'Применимо' ? 'text-green-400' : 'text-muted-foreground'}>{req.procurement}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Скоринг (кат.)</span>
-              <span className="text-foreground">{req.scoringCategory}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Скоринг (вес)</span>
-              <span className="text-foreground">{req.scoringWeight}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Внеш. с ИОД</span>
-              <span className={iodColor(req.externalWithIod)}>{req.externalWithIod}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Внеш. без ИОД</span>
-              <span className={iodColor(req.externalWithoutIod)}>{req.externalWithoutIod}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Внутр. с ИОД</span>
-              <span className={iodColor(req.internalWithIod)}>{req.internalWithIod}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Внутр. без ИОД</span>
-              <span className={iodColor(req.internalWithoutIod)}>{req.internalWithoutIod}</span>
-            </div>
-          </div>
-
-          {(req.environments.length > 0 || req.appStages.length > 0) && (
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs border-t border-white/10 pt-3">
-              {req.environments.length > 0 && (
-                <div>
-                  <span className="text-muted-foreground block mb-1">Среды</span>
-                  <div className="flex flex-wrap gap-1">
-                    {req.environments.map(e => <Badge key={e} className="text-sky-400 bg-sky-400/10 border-sky-400/20 text-[10px]">{e}</Badge>)}
-                  </div>
-                </div>
-              )}
-              {req.appStages.length > 0 && (
-                <div>
-                  <span className="text-muted-foreground block mb-1">Стадии</span>
-                  <div className="flex flex-wrap gap-1">
-                    {req.appStages.map(s => <Badge key={s} className="text-violet-400 bg-violet-400/10 border-violet-400/20 text-[10px]">{s}</Badge>)}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  const cat  = CATEGORY_CONFIG[req.category] ?? { label: req.category, icon: 'Circle', color: 'text-slate-400' };
+  switch (colKey) {
+    case 'id':               return <span className="font-mono text-[11px] text-muted-foreground whitespace-nowrap">{req.id}</span>;
+    case 'techName':         return <Badge className="text-slate-400 bg-slate-400/10 border-slate-400/20 text-[10px] whitespace-nowrap">{techName}</Badge>;
+    case 'category':         return <span className={`flex items-center gap-1 text-xs whitespace-nowrap ${cat.color}`}><Icon name={cat.icon} size={11} />{cat.label}</span>;
+    case 'title':            return <span className="text-xs font-medium text-foreground min-w-[140px]">{req.title}</span>;
+    case 'description':      return <span className="text-xs text-muted-foreground line-clamp-2 min-w-[160px] max-w-[220px]">{req.description}</span>;
+    case 'priority':         return <Badge className={`${prio.color} whitespace-nowrap`}>{prio.label}</Badge>;
+    case 'status':           return <Badge className={`${stat.color} whitespace-nowrap`}>{stat.label}</Badge>;
+    case 'tags':             return req.tags.length ? <div className="flex flex-wrap gap-1 min-w-[80px]">{req.tags.map(t => <Badge key={t} className="text-slate-400 bg-slate-400/10 border-slate-400/20 text-[10px]">#{t}</Badge>)}</div> : <span className="text-muted-foreground text-xs">—</span>;
+    case 'author':           return <span className="text-xs text-foreground whitespace-nowrap">{req.author}</span>;
+    case 'version':          return <span className="text-xs font-mono text-foreground whitespace-nowrap">v{req.version}</span>;
+    case 'createdAt':        return <span className="text-xs text-muted-foreground whitespace-nowrap">{req.createdAt}</span>;
+    case 'updatedAt':        return <span className="text-xs text-muted-foreground whitespace-nowrap">{req.updatedAt}</span>;
+    case 'environments':     return req.environments.length ? <div className="flex flex-wrap gap-1 min-w-[80px]">{req.environments.map(e => <Badge key={e} className="text-sky-400 bg-sky-400/10 border-sky-400/20 text-[10px]">{e}</Badge>)}</div> : <span className="text-muted-foreground text-xs">—</span>;
+    case 'appStages':        return req.appStages.length ? <div className="flex flex-wrap gap-1 min-w-[100px]">{req.appStages.map(s => <Badge key={s} className="text-violet-400 bg-violet-400/10 border-violet-400/20 text-[10px]">{s}</Badge>)}</div> : <span className="text-muted-foreground text-xs">—</span>;
+    case 'externalWithIod':    return <span className={`text-xs whitespace-nowrap ${INTERACTION_COLOR(req.externalWithIod)}`}>{req.externalWithIod}</span>;
+    case 'externalWithoutIod': return <span className={`text-xs whitespace-nowrap ${INTERACTION_COLOR(req.externalWithoutIod)}`}>{req.externalWithoutIod}</span>;
+    case 'internalWithIod':    return <span className={`text-xs whitespace-nowrap ${INTERACTION_COLOR(req.internalWithIod)}`}>{req.internalWithIod}</span>;
+    case 'internalWithoutIod': return <span className={`text-xs whitespace-nowrap ${INTERACTION_COLOR(req.internalWithoutIod)}`}>{req.internalWithoutIod}</span>;
+    case 'procurement':      return <span className={`text-xs whitespace-nowrap ${req.procurement === 'Применимо' ? 'text-green-400' : 'text-muted-foreground'}`}>{req.procurement}</span>;
+    case 'scoringCategory':  return <span className="text-xs text-foreground">{req.scoringCategory}</span>;
+    case 'scoringWeight':    return <span className="text-xs text-foreground">{req.scoringWeight}</span>;
+    default:                 return null;
+  }
 }
 
 function SolutionDetail({ solution, technologies, requirements, onClose, onOpenTech }: {
@@ -326,6 +261,8 @@ function SolutionDetail({ solution, technologies, requirements, onClose, onOpenT
   const [filterCat, setFilterCat] = useState<Category | 'all'>('all');
   const [filterPrio, setFilterPrio] = useState<Priority | 'all'>('all');
   const [filterStat, setFilterStat] = useState<Status | 'all'>('all');
+  const [visibleCols, setVisibleCols] = useState<ReqColKey[]>(DEFAULT_COLS);
+  const [showColPicker, setShowColPicker] = useState(false);
 
   const filteredReqs = useMemo(() => reqsWithTech.filter(({ req }) => {
     if (filterCat !== 'all' && req.category !== filterCat) return false;
@@ -399,31 +336,63 @@ function SolutionDetail({ solution, technologies, requirements, onClose, onOpenT
 
           {reqsWithTech.length > 0 && (
             <div className="glass rounded-2xl overflow-hidden">
-              <div className="px-5 pt-5 pb-3 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <div className="px-5 pt-5 pb-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 flex-wrap">
                     <Icon name="ListChecks" size={15} className="text-amber-400" />
                     Перечень требований к используемым технологиям
                     <span className="text-amber-400">({filteredReqs.length}{hasFilters ? `/${reqsWithTech.length}` : ''})</span>
                   </h3>
-                  {hasFilters && (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {hasFilters && (
+                      <button
+                        onClick={() => { setFilterCat('all'); setFilterPrio('all'); setFilterStat('all'); }}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors border border-white/10 rounded-lg px-2 py-1"
+                      >
+                        <Icon name="X" size={10} /> Сбросить
+                      </button>
+                    )}
                     <button
-                      onClick={() => { setFilterCat('all'); setFilterPrio('all'); setFilterStat('all'); }}
-                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                      onClick={() => setShowColPicker(v => !v)}
+                      className={`text-xs flex items-center gap-1 transition-colors border rounded-lg px-2 py-1 ${showColPicker ? 'border-blue-500/40 text-blue-400 bg-blue-500/10' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
                     >
-                      <Icon name="X" size={11} /> Сбросить
+                      <Icon name="SlidersHorizontal" size={11} /> Колонки
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-1.5">
+                {showColPicker && (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                    <p className="text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase">Отображаемые колонки</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALL_REQ_COLUMNS.map(col => {
+                        const active = visibleCols.includes(col.key);
+                        return (
+                          <button
+                            key={col.key}
+                            onClick={() => setVisibleCols(prev =>
+                              active
+                                ? prev.length > 1 ? prev.filter(k => k !== col.key) : prev
+                                : [...prev, col.key]
+                            )}
+                            className={`px-2 py-0.5 rounded-md text-[11px] border transition-colors ${active ? 'bg-blue-500/15 border-blue-500/40 text-blue-300' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                          >
+                            {col.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-1.5 items-center">
                   <button
-                    onClick={() => setFilterCat('all')}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${filterCat === 'all' && filterPrio === 'all' && filterStat === 'all' ? 'bg-white/10 border-white/20 text-foreground' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                    onClick={() => { setFilterCat('all'); setFilterPrio('all'); setFilterStat('all'); }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${!hasFilters ? 'bg-white/10 border-white/20 text-foreground' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
                   >
                     Все
                   </button>
-                  {usedCats.map(cat => {
+                  {usedCats.length > 1 && usedCats.map(cat => {
                     const c = CATEGORY_CONFIG[cat];
                     return (
                       <button key={cat} onClick={() => setFilterCat(filterCat === cat ? 'all' : cat)}
@@ -432,46 +401,67 @@ function SolutionDetail({ solution, technologies, requirements, onClose, onOpenT
                       </button>
                     );
                   })}
-                  <div className="w-px bg-white/10 self-stretch mx-0.5" />
-                  {usedPrios.map(p => {
-                    const pc = PRIORITY_CONFIG[p];
-                    return (
-                      <button key={p} onClick={() => setFilterPrio(filterPrio === p ? 'all' : p)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${filterPrio === p ? pc.color : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
-                        {pc.label}
-                      </button>
-                    );
-                  })}
-                  <div className="w-px bg-white/10 self-stretch mx-0.5" />
-                  {usedStats.map(s => {
-                    const sc = STATUS_CONFIG[s];
-                    return (
-                      <button key={s} onClick={() => setFilterStat(filterStat === s ? 'all' : s)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${filterStat === s ? sc.color : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
-                        {sc.label}
-                      </button>
-                    );
-                  })}
+                  {usedPrios.length > 1 && (
+                    <>
+                      <div className="w-px h-4 bg-white/10" />
+                      {usedPrios.map(p => {
+                        const pc = PRIORITY_CONFIG[p];
+                        return (
+                          <button key={p} onClick={() => setFilterPrio(filterPrio === p ? 'all' : p)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${filterPrio === p ? pc.color : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
+                            {pc.label}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                  {usedStats.length > 1 && (
+                    <>
+                      <div className="w-px h-4 bg-white/10" />
+                      {usedStats.map(s => {
+                        const sc = STATUS_CONFIG[s];
+                        return (
+                          <button key={s} onClick={() => setFilterStat(filterStat === s ? 'all' : s)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${filterStat === s ? sc.color : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
+                            {sc.label}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               </div>
 
-              <div className="border-t border-white/10">
-                <div
-                  className="grid px-3 py-2 border-b border-white/10 bg-white/3"
-                  style={{ gridTemplateColumns: '80px 100px 130px 1fr 100px 90px 28px' }}
-                >
-                  {['НУМЕРАЦИЯ', 'ТЕХНОЛОГИЯ', 'КАТЕГОРИЯ', 'НАЗВАНИЕ ТРЕБОВАНИЯ', 'ПРИОРИТЕТ', 'СТАТУС', ''].map((h, i) => (
-                    <span key={i} className="text-[10px] font-semibold tracking-wider text-muted-foreground/60 px-1 truncate">{h}</span>
-                  ))}
-                </div>
-
-                {filteredReqs.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-8">Нет требований по выбранным фильтрам</p>
-                ) : (
-                  filteredReqs.map(({ req, techName }) => (
-                    <SolutionReqRow key={req.id} req={req} techName={techName} />
-                  ))
-                )}
+              <div className="border-t border-white/10 overflow-x-auto">
+                <table className="w-full text-left" style={{ minWidth: `${visibleCols.length * 110}px` }}>
+                  <thead>
+                    <tr className="bg-white/3 border-b border-white/10">
+                      {visibleCols.map(key => {
+                        const col = ALL_REQ_COLUMNS.find(c => c.key === key)!;
+                        return (
+                          <th key={key} className="px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase whitespace-nowrap">
+                            {col.label}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredReqs.length === 0 ? (
+                      <tr><td colSpan={visibleCols.length} className="text-xs text-muted-foreground text-center py-8">Нет требований по выбранным фильтрам</td></tr>
+                    ) : (
+                      filteredReqs.map(({ req, techName }, idx) => (
+                        <tr key={req.id} className={`border-b border-white/5 hover:bg-white/3 transition-colors ${idx % 2 === 0 ? '' : 'bg-white/[0.02]'}`}>
+                          {visibleCols.map(key => (
+                            <td key={key} className="px-3 py-2.5 align-top">
+                              <ReqTableCell colKey={key} req={req} techName={techName} />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

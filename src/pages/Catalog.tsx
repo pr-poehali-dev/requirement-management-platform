@@ -56,6 +56,40 @@ function ArchDetail({ arch, solutions, technologies, techDomains, requirements, 
   const [activeScheme, setActiveScheme] = useState(0);
   const [exporting, setExporting] = useState<'pdf' | 'word' | null>(null);
 
+  const reqsWithTech = useMemo(() => {
+    const result: { req: Requirement; techName: string }[] = [];
+    const seen = new Set<string>();
+    for (const sol of linkedSolutions) {
+      const techs = technologies.filter(t => sol.technologyIds.includes(t.id));
+      for (const tech of techs) {
+        for (const reqId of tech.requirementIds) {
+          if (seen.has(reqId)) continue;
+          const req = requirements.find(r => r.id === reqId);
+          if (req) { result.push({ req, techName: tech.name }); seen.add(reqId); }
+        }
+      }
+    }
+    return result;
+  }, [linkedSolutions, technologies, requirements]);
+
+  const [archFilterCat, setArchFilterCat] = useState<Category | 'all'>('all');
+  const [archFilterPrio, setArchFilterPrio] = useState<Priority | 'all'>('all');
+  const [archFilterStat, setArchFilterStat] = useState<Status | 'all'>('all');
+  const [archVisibleCols, setArchVisibleCols] = useState<ReqColKey[]>(DEFAULT_COLS);
+  const [archShowColPicker, setArchShowColPicker] = useState(false);
+
+  const archFilteredReqs = useMemo(() => reqsWithTech.filter(({ req }) => {
+    if (archFilterCat !== 'all' && req.category !== archFilterCat) return false;
+    if (archFilterPrio !== 'all' && req.priority !== archFilterPrio) return false;
+    if (archFilterStat !== 'all' && req.status !== archFilterStat) return false;
+    return true;
+  }), [reqsWithTech, archFilterCat, archFilterPrio, archFilterStat]);
+
+  const archHasFilters = archFilterCat !== 'all' || archFilterPrio !== 'all' || archFilterStat !== 'all';
+  const archUsedCats  = useMemo(() => [...new Set(reqsWithTech.map(x => x.req.category))], [reqsWithTech]);
+  const archUsedPrios = useMemo(() => [...new Set(reqsWithTech.map(x => x.req.priority))], [reqsWithTech]);
+  const archUsedStats = useMemo(() => [...new Set(reqsWithTech.map(x => x.req.status))], [reqsWithTech]);
+
   const exportCtx = { arch, solutions, technologies, techDomains, requirements };
 
   async function handleExportPdf() {
@@ -167,6 +201,139 @@ function ArchDetail({ arch, solutions, technologies, techDomains, requirements, 
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Требования */}
+          {reqsWithTech.length > 0 && (
+            <div className="glass rounded-2xl overflow-hidden">
+              <div className="px-5 pt-5 pb-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 flex-wrap">
+                    <Icon name="ListChecks" size={15} className="text-amber-400" />
+                    Перечень требований к используемым технологиям
+                    <span className="text-amber-400">({archFilteredReqs.length}{archHasFilters ? `/${reqsWithTech.length}` : ''})</span>
+                  </h3>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {archHasFilters && (
+                      <button
+                        onClick={() => { setArchFilterCat('all'); setArchFilterPrio('all'); setArchFilterStat('all'); }}
+                        className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors border border-white/10 rounded-lg px-2 py-1"
+                      >
+                        <Icon name="X" size={10} /> Сбросить
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setArchShowColPicker(v => !v)}
+                      className={`text-xs flex items-center gap-1 transition-colors border rounded-lg px-2 py-1 ${archShowColPicker ? 'border-pink-500/40 text-pink-400 bg-pink-500/10' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                    >
+                      <Icon name="SlidersHorizontal" size={11} /> Колонки
+                    </button>
+                  </div>
+                </div>
+
+                {archShowColPicker && (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                    <p className="text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase">Отображаемые колонки</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALL_REQ_COLUMNS.map(col => {
+                        const active = archVisibleCols.includes(col.key);
+                        return (
+                          <button
+                            key={col.key}
+                            onClick={() => setArchVisibleCols(prev =>
+                              active
+                                ? prev.length > 1 ? prev.filter(k => k !== col.key) : prev
+                                : [...prev, col.key]
+                            )}
+                            className={`px-2 py-0.5 rounded-md text-[11px] border transition-colors ${active ? 'bg-pink-500/15 border-pink-500/40 text-pink-300' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                          >
+                            {col.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <button
+                    onClick={() => { setArchFilterCat('all'); setArchFilterPrio('all'); setArchFilterStat('all'); }}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${!archHasFilters ? 'bg-white/10 border-white/20 text-foreground' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                  >
+                    Все
+                  </button>
+                  {archUsedCats.length > 1 && archUsedCats.map(cat => {
+                    const c = CATEGORY_CONFIG[cat];
+                    return (
+                      <button key={cat} onClick={() => setArchFilterCat(archFilterCat === cat ? 'all' : cat)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${archFilterCat === cat ? `${c.color} bg-white/10 border-white/20` : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
+                        <Icon name={c.icon} size={10} />{c.label}
+                      </button>
+                    );
+                  })}
+                  {archUsedPrios.length > 1 && (
+                    <>
+                      <div className="w-px h-4 bg-white/10" />
+                      {archUsedPrios.map(p => {
+                        const pc = PRIORITY_CONFIG[p];
+                        return (
+                          <button key={p} onClick={() => setArchFilterPrio(archFilterPrio === p ? 'all' : p)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${archFilterPrio === p ? pc.color : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
+                            {pc.label}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                  {archUsedStats.length > 1 && (
+                    <>
+                      <div className="w-px h-4 bg-white/10" />
+                      {archUsedStats.map(s => {
+                        const sc = STATUS_CONFIG[s];
+                        return (
+                          <button key={s} onClick={() => setArchFilterStat(archFilterStat === s ? 'all' : s)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${archFilterStat === s ? sc.color : 'border-white/10 text-muted-foreground hover:border-white/20'}`}>
+                            {sc.label}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 overflow-x-auto">
+                <table className="w-full text-left" style={{ minWidth: `${archVisibleCols.length * 110}px` }}>
+                  <thead>
+                    <tr className="bg-white/3 border-b border-white/10">
+                      {archVisibleCols.map(key => {
+                        const col = ALL_REQ_COLUMNS.find(c => c.key === key)!;
+                        return (
+                          <th key={key} className="px-3 py-2 text-[10px] font-semibold tracking-wider text-muted-foreground/60 uppercase whitespace-nowrap">
+                            {col.label}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {archFilteredReqs.length === 0 ? (
+                      <tr><td colSpan={archVisibleCols.length} className="text-xs text-muted-foreground text-center py-8">Нет требований по выбранным фильтрам</td></tr>
+                    ) : (
+                      archFilteredReqs.map(({ req, techName }, idx) => (
+                        <tr key={req.id} className={`border-b border-white/5 hover:bg-white/3 transition-colors ${idx % 2 === 0 ? '' : 'bg-white/[0.02]'}`}>
+                          {archVisibleCols.map(key => (
+                            <td key={key} className="px-3 py-2.5 align-top">
+                              <ReqTableCell colKey={key} req={req} techName={techName} />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

@@ -6,7 +6,8 @@ import { useEffect, useRef } from 'react';
 import {
   MOCK_REQUIREMENTS, MOCK_TECHNOLOGIES, MOCK_SOLUTIONS, MOCK_ARCHITECTURES, MOCK_TECH_DOMAINS,
   Technology, TechnicalSolution, TypicalArchitecture, TechDomain, Requirement,
-  ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG, PRIORITY_CONFIG,
+  ARCH_STATUS_CONFIG, SOLUTION_STATUS_CONFIG, PRIORITY_CONFIG, STATUS_CONFIG, CATEGORY_CONFIG,
+  Category, Priority, Status,
 } from '@/types';
 import { exportArchToPdf, exportArchToWord } from '@/services/archExport';
 
@@ -175,14 +176,157 @@ function ArchDetail({ arch, solutions, technologies, techDomains, requirements, 
   );
 }
 
-function SolutionDetail({ solution, technologies, onClose, onOpenTech }: {
+function SolutionReqRow({ req, techName }: { req: Requirement; techName: string }) {
+  const [open, setOpen] = useState(false);
+  const prio = PRIORITY_CONFIG[req.priority] ?? { label: req.priority, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
+  const stat = STATUS_CONFIG[req.status] ?? { label: req.status, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
+  const cat = CATEGORY_CONFIG[req.category] ?? { label: req.category, icon: 'Circle', color: 'text-slate-400' };
+
+  return (
+    <div className="rounded-xl border border-white/10 overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-start gap-3 p-3 bg-white/5 hover:bg-blue-500/5 transition-all group text-left"
+      >
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-mono text-muted-foreground">{req.id}</span>
+            <Badge className="text-slate-500 bg-slate-500/10 border-slate-500/20 text-[10px]">{techName}</Badge>
+            <span className={`flex items-center gap-1 text-xs ${cat.color}`}>
+              <Icon name={cat.icon} size={11} />
+              {cat.label}
+            </span>
+          </div>
+          <p className="text-sm font-medium text-foreground group-hover:text-blue-300 transition-colors leading-snug">{req.title}</p>
+          {!open && <p className="text-xs text-muted-foreground line-clamp-1">{req.description}</p>}
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+          <Badge className={prio.color}>{prio.label}</Badge>
+          <Badge className={stat.color}>{stat.label}</Badge>
+          <Icon name={open ? 'ChevronUp' : 'ChevronDown'} size={14} className="text-muted-foreground group-hover:text-blue-400 transition-colors ml-1" />
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 pt-3 bg-white/3 border-t border-white/10 space-y-4">
+          <p className="text-xs text-muted-foreground leading-relaxed">{req.description}</p>
+
+          {req.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {req.tags.map(t => <Badge key={t} className="text-slate-400 bg-slate-400/10 border-slate-400/20 text-[10px]">#{t}</Badge>)}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs border-t border-white/10 pt-3">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Автор</span>
+                <span className="text-foreground">{req.author}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Версия</span>
+                <span className="text-foreground font-mono">v{req.version}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Создано</span>
+                <span className="text-foreground">{req.createdAt}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Обновлено</span>
+                <span className="text-foreground">{req.updatedAt}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Закупки</span>
+                <span className={req.procurement === 'Применимо' ? 'text-green-400' : 'text-muted-foreground'}>{req.procurement}</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Скоринг (кат.)</span>
+                <span className="text-foreground">{req.scoringCategory}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Скоринг (вес)</span>
+                <span className="text-foreground">{req.scoringWeight}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Внеш. с ИОД</span>
+                <span className={req.externalWithIod === 'Обязательный' ? 'text-amber-400' : req.externalWithIod === 'Рекомендуется' ? 'text-cyan-400' : 'text-muted-foreground'}>{req.externalWithIod}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Внеш. без ИОД</span>
+                <span className={req.externalWithoutIod === 'Обязательный' ? 'text-amber-400' : req.externalWithoutIod === 'Рекомендуется' ? 'text-cyan-400' : 'text-muted-foreground'}>{req.externalWithoutIod}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Внутр. с ИОД</span>
+                <span className={req.internalWithIod === 'Обязательный' ? 'text-amber-400' : req.internalWithIod === 'Рекомендуется' ? 'text-cyan-400' : 'text-muted-foreground'}>{req.internalWithIod}</span>
+              </div>
+            </div>
+          </div>
+
+          {(req.environments.length > 0 || req.appStages.length > 0) && (
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs border-t border-white/10 pt-3">
+              {req.environments.length > 0 && (
+                <div>
+                  <span className="text-muted-foreground block mb-1">Среды</span>
+                  <div className="flex flex-wrap gap-1">
+                    {req.environments.map(e => <Badge key={e} className="text-sky-400 bg-sky-400/10 border-sky-400/20 text-[10px]">{e}</Badge>)}
+                  </div>
+                </div>
+              )}
+              {req.appStages.length > 0 && (
+                <div>
+                  <span className="text-muted-foreground block mb-1">Стадии</span>
+                  <div className="flex flex-wrap gap-1">
+                    {req.appStages.map(s => <Badge key={s} className="text-violet-400 bg-violet-400/10 border-violet-400/20 text-[10px]">{s}</Badge>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SolutionDetail({ solution, technologies, requirements, onClose, onOpenTech }: {
   solution: TechnicalSolution;
   technologies: Technology[];
+  requirements: Requirement[];
   onClose: () => void;
   onOpenTech: (t: Technology) => void;
 }) {
   const cfg = SOLUTION_STATUS_CONFIG[solution.status] ?? { label: solution.status, color: 'text-slate-400 bg-slate-400/10 border-slate-400/30' };
   const linked = technologies.filter(t => solution.technologyIds.includes(t.id));
+
+  const reqsWithTech = useMemo(() => {
+    const result: { req: Requirement; techName: string }[] = [];
+    for (const tech of linked) {
+      for (const reqId of tech.requirementIds) {
+        const req = requirements.find(r => r.id === reqId);
+        if (req) result.push({ req, techName: tech.name });
+      }
+    }
+    return result;
+  }, [linked, requirements]);
+
+  const [filterCat, setFilterCat] = useState<Category | 'all'>('all');
+  const [filterPrio, setFilterPrio] = useState<Priority | 'all'>('all');
+  const [filterStat, setFilterStat] = useState<Status | 'all'>('all');
+
+  const filteredReqs = useMemo(() => reqsWithTech.filter(({ req }) => {
+    if (filterCat !== 'all' && req.category !== filterCat) return false;
+    if (filterPrio !== 'all' && req.priority !== filterPrio) return false;
+    if (filterStat !== 'all' && req.status !== filterStat) return false;
+    return true;
+  }), [reqsWithTech, filterCat, filterPrio, filterStat]);
+
+  const hasFilters = filterCat !== 'all' || filterPrio !== 'all' || filterStat !== 'all';
+
+  const usedCats = useMemo(() => [...new Set(reqsWithTech.map(x => x.req.category))], [reqsWithTech]);
+  const usedPrios = useMemo(() => [...new Set(reqsWithTech.map(x => x.req.priority))], [reqsWithTech]);
+  const usedStats = useMemo(() => [...new Set(reqsWithTech.map(x => x.req.status))], [reqsWithTech]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end">
@@ -214,6 +358,7 @@ function SolutionDetail({ solution, technologies, onClose, onOpenTech }: {
             <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground border-t border-white/10 pt-4">
               <span>Владелец: <span className="text-foreground">{solution.owner}</span></span>
               <span>Автор: <span className="text-foreground">{solution.author}</span></span>
+              <span>Создано: <span className="text-foreground">{solution.createdAt}</span></span>
               <span>Обновлено: <span className="text-foreground">{solution.updatedAt}</span></span>
             </div>
           </div>
@@ -236,6 +381,108 @@ function SolutionDetail({ solution, technologies, onClose, onOpenTech }: {
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tech.description}</p>
                   </button>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {reqsWithTech.length > 0 && (
+            <div className="glass rounded-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Icon name="ListChecks" size={15} className="text-amber-400" />
+                  Перечень требований к используемым технологиям
+                  <span className="text-amber-400">({filteredReqs.length}{hasFilters ? `/${reqsWithTech.length}` : ''})</span>
+                </h3>
+                {hasFilters && (
+                  <button
+                    onClick={() => { setFilterCat('all'); setFilterPrio('all'); setFilterStat('all'); }}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                  >
+                    <Icon name="X" size={11} /> Сбросить
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {usedCats.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setFilterCat('all')}
+                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterCat === 'all' ? 'bg-white/10 border-white/20 text-foreground' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                    >
+                      Все категории
+                    </button>
+                    {usedCats.map(cat => {
+                      const c = CATEGORY_CONFIG[cat];
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setFilterCat(filterCat === cat ? 'all' : cat)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterCat === cat ? `${c.color} bg-white/10 border-white/20` : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                        >
+                          <Icon name={c.icon} size={10} />
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {usedPrios.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setFilterPrio('all')}
+                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterPrio === 'all' ? 'bg-white/10 border-white/20 text-foreground' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                    >
+                      Все приоритеты
+                    </button>
+                    {usedPrios.map(p => {
+                      const pc = PRIORITY_CONFIG[p];
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => setFilterPrio(filterPrio === p ? 'all' : p)}
+                          className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterPrio === p ? `${pc.color}` : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                        >
+                          {pc.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {usedStats.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      onClick={() => setFilterStat('all')}
+                      className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterStat === 'all' ? 'bg-white/10 border-white/20 text-foreground' : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                    >
+                      Все статусы
+                    </button>
+                    {usedStats.map(s => {
+                      const sc = STATUS_CONFIG[s];
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setFilterStat(filterStat === s ? 'all' : s)}
+                          className={`px-2.5 py-1 rounded-lg text-xs border transition-colors ${filterStat === s ? `${sc.color}` : 'border-white/10 text-muted-foreground hover:border-white/20'}`}
+                        >
+                          {sc.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {filteredReqs.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">Нет требований по выбранным фильтрам</p>
+                ) : (
+                  filteredReqs.map(({ req, techName }) => (
+                    <SolutionReqRow key={req.id} req={req} techName={techName} />
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -719,6 +966,7 @@ export default function Catalog() {
         <SolutionDetail
           solution={selectedSol}
           technologies={technologies}
+          requirements={requirements}
           onClose={() => setSelectedSol(null)}
           onOpenTech={t => { setSelectedSol(null); setSelectedTech(t); }}
         />

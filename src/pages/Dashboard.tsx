@@ -76,7 +76,7 @@ function truncate(s: string, n = 18) {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 
-const W = 1200;
+const W = 1420;
 const H = 820;
 const NODE_W = 148;
 const NODE_H = 54;
@@ -93,9 +93,8 @@ function buildGraph(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
-  // Layout columns: org → tech → tech/solution → req/arch
-  // Column X positions
-  const COL = [100, 290, 510, 730, 950];
+  // Layout columns: org → tech → technology → solution → architecture → requirement
+  const COL = [100, 290, 510, 730, 950, 1170];
 
   // Vertical spacing helper
   function yPos(items: unknown[], idx: number, col: number) {
@@ -124,7 +123,7 @@ function buildGraph(
   });
 
   requirements.forEach((r, i) => {
-    nodes.push({ id: `requirement_${r.id}`, label: truncate(r.title), type: 'requirement', x: COL[4], y: yPos(requirements, i, 4), subLabel: r.author });
+    nodes.push({ id: `requirement_${r.id}`, label: truncate(r.title), type: 'requirement', x: COL[5], y: yPos(requirements, i, 5), subLabel: r.author });
     r.requirementIds?.forEach?.(() => {});
     technologies.forEach(t => {
       if (t.requirementIds?.includes(r.id)) edges.push({ from: `technology_${t.id}`, to: `requirement_${r.id}` });
@@ -139,12 +138,7 @@ function buildGraph(
   });
 
   architectures.forEach((a, i) => {
-    const aIdx = solutions.length + i;
-    const total = solutions.length + architectures.length;
-    const spacing = Math.min(72, (H - 100) / Math.max(total, 1));
-    const startY = (H - spacing * (total - 1)) / 2;
-    const yOff = startY + aIdx * spacing;
-    nodes.push({ id: `architecture_${a.id}`, label: truncate(a.name), type: 'architecture', x: COL[3], y: yOff, subLabel: a.author });
+    nodes.push({ id: `architecture_${a.id}`, label: truncate(a.name), type: 'architecture', x: COL[4], y: yPos(architectures, i, 4), subLabel: a.author });
     a.solutionIds?.forEach(sid => {
       if (solutions.find(s => s.id === sid)) edges.push({ from: `solution_${sid}`, to: `architecture_${a.id}` });
     });
@@ -368,11 +362,12 @@ export default function Dashboard() {
 
                 {/* Column labels */}
                 {[
-                  { x: 100, label: 'Орг. домены', color: NODE_COLORS.org.border },
-                  { x: 290, label: 'Тех. домены', color: NODE_COLORS.tech.border },
-                  { x: 510, label: 'Технологии', color: NODE_COLORS.technology.border },
-                  { x: 730, label: 'Решения / Арх.', color: NODE_COLORS.solution.border },
-                  { x: 950, label: 'Требования', color: NODE_COLORS.requirement.border },
+                  { x: 100,  label: 'Орг. домены',  color: NODE_COLORS.org.border },
+                  { x: 290,  label: 'Тех. домены',  color: NODE_COLORS.tech.border },
+                  { x: 510,  label: 'Технологии',   color: NODE_COLORS.technology.border },
+                  { x: 730,  label: 'Тех. решения', color: NODE_COLORS.solution.border },
+                  { x: 950,  label: 'Архитектуры',  color: NODE_COLORS.architecture.border },
+                  { x: 1170, label: 'Требования',   color: NODE_COLORS.requirement.border },
                 ].map(col => (
                   <g key={col.x}>
                     <line x1={col.x} y1={30} x2={col.x} y2={H - 20} stroke={col.color} strokeWidth="1" strokeOpacity="0.12" strokeDasharray="4 6" />

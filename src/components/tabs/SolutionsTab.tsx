@@ -1,4 +1,5 @@
 import { useState, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import {
   TechnicalSolution, Technology, Requirement,
@@ -177,6 +178,7 @@ interface Props {
 
 const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
   ({ solutions, setSolutions, technologies, requirements, onNavigateToTech }, ref) => {
+    const navigate = useNavigate();
     const [view, setView] = useState<SolutionView>('list');
     const [selected, setSelected] = useState<TechnicalSolution | null>(null);
     const [form, setForm] = useState({ ...emptySolutionForm });
@@ -191,7 +193,7 @@ const SolutionsTab = forwardRef<SolutionsTabHandle, Props>(
       openDetail: (sol: TechnicalSolution) => { setSelected(sol); setView('detail'); },
     }), [view]);
 
-    function openDetail(sol: TechnicalSolution) { setSelected(sol); setView('detail'); }
+    function openDetail(sol: TechnicalSolution) { setSelected(sol); setView('detail'); navigate(`/solutions/${sol.id}`); }
     function openEdit(sol: TechnicalSolution) {
       setForm({ name: sol.name, version: sol.version, owner: sol.owner, author: sol.author, status: sol.status, description: sol.description, tags: [...sol.tags], technologyIds: [...sol.technologyIds] });
       setSelected(sol); setView('edit');

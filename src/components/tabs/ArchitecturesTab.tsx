@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import mermaid from 'mermaid';
 import Icon from '@/components/ui/icon';
 import {
@@ -279,6 +280,7 @@ interface Props {
 
 const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
   ({ architectures, setArchitectures, techDomains, solutions, requirements }, ref) => {
+    const navigate = useNavigate();
     const [view, setView] = useState<ArchView>('list');
     const [selected, setSelected] = useState<TypicalArchitecture | null>(null);
     const [form, setForm] = useState({ ...emptyArchForm });
@@ -296,7 +298,7 @@ const ArchitecturesTab = forwardRef<ArchitecturesTabHandle, Props>(
       openDetail: (arch: TypicalArchitecture) => { setSelected(arch); setView('detail'); },
     }), [view]);
 
-    function openDetail(arch: TypicalArchitecture) { setSelected(arch); setView('detail'); }
+    function openDetail(arch: TypicalArchitecture) { setSelected(arch); setView('detail'); navigate(`/architectures/${arch.id}`); }
     function openEdit(arch: TypicalArchitecture) {
       setForm({
         name: arch.name, description: arch.description, status: arch.status,

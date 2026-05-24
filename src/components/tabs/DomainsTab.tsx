@@ -1,4 +1,5 @@
 import { useState, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import {
   OrgDomain, TechDomain, Technology, DomainStatus, DomainView, TechDomainView,
@@ -12,6 +13,8 @@ export interface DomainsTabHandle {
   openTechDomainCreate: () => void;
   goBackDomain: () => void;
   goBackTechDomain: () => void;
+  openDomainDetail: (domain: OrgDomain) => void;
+  openTechDomainDetail: (td: TechDomain) => void;
 }
 
 interface Props {
@@ -25,6 +28,7 @@ interface Props {
 
 const DomainsTab = forwardRef<DomainsTabHandle, Props>(
   ({ domains, setDomains, techDomains, setTechDomains, technologies, activeTab }, ref) => {
+    const navigate = useNavigate();
     const [domainView, setDomainView] = useState<DomainView>('list');
     const [selectedDomain, setSelectedDomain] = useState<OrgDomain | null>(null);
     const [domainForm, setDomainForm] = useState({ ...emptyDomainForm });
@@ -44,10 +48,12 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
       openTechDomainCreate: () => { setTechDomainForm({ ...emptyTechDomainForm }); setTechDomainView('create'); },
       goBackDomain: () => setDomainView('list'),
       goBackTechDomain: () => setTechDomainView('list'),
+      openDomainDetail: (domain: OrgDomain) => { setSelectedDomain(domain); setDomainView('detail'); },
+      openTechDomainDetail: (td: TechDomain) => { setSelectedTechDomain(td); setTechDomainView('detail'); },
     }), [domainView, techDomainView]);
 
     // ── Org Domain helpers ──
-    function openDomainDetail(domain: OrgDomain) { setSelectedDomain(domain); setDomainView('detail'); }
+    function openDomainDetail(domain: OrgDomain) { setSelectedDomain(domain); setDomainView('detail'); navigate(`/domains/${domain.id}`); }
     function openDomainEdit(domain: OrgDomain) {
       setDomainForm({ name: domain.name, version: domain.version, owner: domain.owner, status: domain.status, description: domain.description });
       setSelectedDomain(domain); setDomainView('edit');
@@ -66,7 +72,7 @@ const DomainsTab = forwardRef<DomainsTabHandle, Props>(
     function deleteDomain(id: string) { setDomains(prev => prev.filter(d => d.id !== id)); setDomainView('list'); }
 
     // ── Tech Domain helpers ──
-    function openTechDomainDetail(td: TechDomain) { setSelectedTechDomain(td); setTechDomainView('detail'); }
+    function openTechDomainDetail(td: TechDomain) { setSelectedTechDomain(td); setTechDomainView('detail'); navigate(`/techdomains/${td.id}`); }
     function openTechDomainEdit(td: TechDomain) {
       setTechDomainForm({ name: td.name, version: td.version, owner: td.owner, status: td.status, description: td.description, orgDomainIds: [...td.orgDomainIds], technologyIds: [...td.technologyIds] });
       setSelectedTechDomain(td); setTechDomainView('edit');

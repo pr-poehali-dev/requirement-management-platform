@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import mermaid from 'mermaid';
-import { useEffect, useRef } from 'react';
 import {
   MOCK_REQUIREMENTS, MOCK_TECHNOLOGIES, MOCK_SOLUTIONS, MOCK_ARCHITECTURES, MOCK_TECH_DOMAINS,
   Technology, TechnicalSolution, TypicalArchitecture, TechDomain, Requirement,
@@ -825,6 +825,10 @@ function TechCard({ tech, onClick }: { tech: Technology; onClick: () => void }) 
 // ─── Таб Каталог ─────────────────────────────────────────────────────────────
 
 export default function Catalog() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'architectures' | 'solutions' | 'technologies'>('all');
@@ -840,6 +844,22 @@ export default function Catalog() {
   const [selectedArch, setSelectedArch] = useState<TypicalArchitecture | null>(null);
   const [selectedSol, setSelectedSol] = useState<TechnicalSolution | null>(null);
   const [selectedTech, setSelectedTech] = useState<Technology | null>(null);
+
+  // Sync URL → open detail panel
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith('/catalog/architecture/') && id) {
+      const arch = architectures.find(a => a.id === id);
+      if (arch) { setSelectedArch(arch); setSelectedSol(null); setSelectedTech(null); }
+    } else if (path.startsWith('/catalog/solution/') && id) {
+      const sol = solutions.find(s => s.id === id);
+      if (sol) { setSelectedSol(sol); setSelectedArch(null); setSelectedTech(null); }
+    } else if (path.startsWith('/catalog/technology/') && id) {
+      const tech = technologies.find(t => t.id === id);
+      if (tech) { setSelectedTech(tech); setSelectedArch(null); setSelectedSol(null); }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, id]);
 
   const q = search.toLowerCase();
 
@@ -1057,7 +1077,7 @@ export default function Catalog() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredArchitectures.map(arch => (
-                    <ArchCard key={arch.id} arch={arch} techDomains={techDomains} onClick={() => setSelectedArch(arch)} />
+                    <ArchCard key={arch.id} arch={arch} techDomains={techDomains} onClick={() => { setSelectedArch(arch); setSelectedSol(null); setSelectedTech(null); navigate(`/catalog/architecture/${arch.id}`); }} />
                   ))}
                 </div>
               </section>
@@ -1072,7 +1092,7 @@ export default function Catalog() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredSolutions.map(sol => (
-                    <SolutionCard key={sol.id} solution={sol} onClick={() => setSelectedSol(sol)} />
+                    <SolutionCard key={sol.id} solution={sol} onClick={() => { setSelectedSol(sol); setSelectedArch(null); setSelectedTech(null); navigate(`/catalog/solution/${sol.id}`); }} />
                   ))}
                 </div>
               </section>
@@ -1087,7 +1107,7 @@ export default function Catalog() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredTechnologies.map(tech => (
-                    <TechCard key={tech.id} tech={tech} onClick={() => setSelectedTech(tech)} />
+                    <TechCard key={tech.id} tech={tech} onClick={() => { setSelectedTech(tech); setSelectedArch(null); setSelectedSol(null); navigate(`/catalog/technology/${tech.id}`); }} />
                   ))}
                 </div>
               </section>
@@ -1104,8 +1124,8 @@ export default function Catalog() {
           technologies={technologies}
           techDomains={techDomains}
           requirements={requirements}
-          onClose={() => setSelectedArch(null)}
-          onOpenSolution={s => { setSelectedArch(null); setSelectedSol(s); }}
+          onClose={() => { setSelectedArch(null); navigate('/catalog'); }}
+          onOpenSolution={s => { setSelectedArch(null); setSelectedSol(s); navigate(`/catalog/solution/${s.id}`); }}
         />
       )}
       {selectedSol && (
@@ -1113,12 +1133,12 @@ export default function Catalog() {
           solution={selectedSol}
           technologies={technologies}
           requirements={requirements}
-          onClose={() => setSelectedSol(null)}
-          onOpenTech={t => { setSelectedSol(null); setSelectedTech(t); }}
+          onClose={() => { setSelectedSol(null); navigate('/catalog'); }}
+          onOpenTech={t => { setSelectedSol(null); setSelectedTech(t); navigate(`/catalog/technology/${t.id}`); }}
         />
       )}
       {selectedTech && (
-        <TechDetail tech={selectedTech} requirements={requirements} onClose={() => setSelectedTech(null)} />
+        <TechDetail tech={selectedTech} requirements={requirements} onClose={() => { setSelectedTech(null); navigate('/catalog'); }} />
       )}
     </div>
   );

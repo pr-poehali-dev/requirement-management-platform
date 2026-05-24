@@ -1,4 +1,5 @@
 import { useState, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import {
   Requirement, ReqAttachment, Technology, Status, Priority, Category, ReqView,
@@ -16,6 +17,7 @@ export interface RequirementsTabHandle {
   isOnSubpage: boolean;
   openCreate: () => void;
   goBack: () => void;
+  openDetail: (req: Requirement) => void;
 }
 
 interface Props {
@@ -27,6 +29,7 @@ interface Props {
 
 const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
   ({ requirements, setRequirements, technologies, onNavigateToTech }, ref) => {
+    const navigate = useNavigate();
     const [reqView, setReqView] = useState<ReqView>('list');
     const [selectedReq, setSelectedReq] = useState<Requirement | null>(null);
     const [reqForm, setReqForm] = useState({ ...emptyReqForm });
@@ -47,6 +50,7 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
       isOnSubpage: reqView !== 'list',
       openCreate: () => { setReqForm({ ...emptyReqForm, tags: [] }); setTagInput(''); setReqView('create'); },
       goBack: () => setReqView('list'),
+      openDetail: (req: Requirement) => { setSelectedReq(req); setReqView('detail'); },
     }), [reqView]);
 
     const hasActiveFilters = search || filterStatus !== 'all' || filterPriority !== 'all' || filterCategory !== 'all' ||
@@ -82,7 +86,7 @@ const RequirementsTab = forwardRef<RequirementsTabHandle, Props>(
       critical: requirements.filter(r => r.priority === 'critical').length,
     };
 
-    function openReqDetail(req: Requirement) { setSelectedReq(req); setReqView('detail'); }
+    function openReqDetail(req: Requirement) { setSelectedReq(req); setReqView('detail'); navigate(`/requirements/${req.id}`); }
     function openReqEdit(req: Requirement) {
       setReqForm({ title: req.title, description: req.description, category: req.category, priority: req.priority, status: req.status, tags: [...req.tags], author: req.author, version: req.version, environments: [...req.environments], appStages: [...req.appStages], externalWithIod: req.externalWithIod, externalWithoutIod: req.externalWithoutIod, internalWithIod: req.internalWithIod, internalWithoutIod: req.internalWithoutIod, procurement: req.procurement, scoringCategory: req.scoringCategory, scoringWeight: req.scoringWeight, attachments: [...(req.attachments ?? [])] });
       setSelectedReq(req); setTagInput(''); setReqView('edit');

@@ -1,4 +1,5 @@
 import { useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '@/components/ui/icon';
 import {
   Technology, Requirement, MermaidScheme, TechView,
@@ -194,6 +195,7 @@ interface Props {
 
 const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
   ({ technologies, setTechnologies, requirements, onNavigateToReq }, ref) => {
+    const navigate = useNavigate();
     const [techView, setTechView] = useState<TechView>('list');
     const [selectedTech, setSelectedTech] = useState<Technology | null>(null);
     const [techForm, setTechForm] = useState({ ...emptyTechForm });
@@ -208,7 +210,7 @@ const TechnologiesTab = forwardRef<TechnologiesTabHandle, Props>(
       openDetail: (tech: Technology) => { setSelectedTech(tech); setTechView('detail'); },
     }), [techView]);
 
-    function openTechDetail(tech: Technology) { setSelectedTech(tech); setTechView('detail'); }
+    function openTechDetail(tech: Technology) { setSelectedTech(tech); setTechView('detail'); navigate(`/technologies/${tech.id}`); }
     function openTechEdit(tech: Technology) {
       setTechForm({ name: tech.name, description: tech.description, version: tech.version });
       setTechReqIds([...tech.requirementIds]);

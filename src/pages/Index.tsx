@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import Icon from '@/components/ui/icon';
 import {
@@ -17,6 +17,8 @@ import Catalog from '@/pages/Catalog';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const [tab, setTab] = useState<Tab>('catalog');
   const [isOnSubpage, setIsOnSubpage] = useState(false);
 
@@ -34,19 +36,69 @@ const Index = () => {
   const solutionsTabRef = useRef<SolutionsTabHandle>(null);
   const archTabRef = useRef<ArchitecturesTabHandle>(null);
 
+  // Sync URL → tab + open detail
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith('/catalog/')) {
+      setTab('catalog');
+      setIsOnSubpage(false);
+    } else if (path.startsWith('/requirements/') && id) {
+      setTab('requirements');
+      setIsOnSubpage(true);
+      setTimeout(() => {
+        const req = requirements.find(r => r.id === id);
+        if (req) reqTabRef.current?.openDetail?.(req);
+      }, 0);
+    } else if (path.startsWith('/technologies/') && id) {
+      setTab('technologies');
+      setIsOnSubpage(true);
+      setTimeout(() => {
+        const tech = technologies.find(t => t.id === id);
+        if (tech) techTabRef.current?.openDetail(tech);
+      }, 0);
+    } else if (path.startsWith('/solutions/') && id) {
+      setTab('solutions');
+      setIsOnSubpage(true);
+      setTimeout(() => {
+        const sol = solutions.find(s => s.id === id);
+        if (sol) solutionsTabRef.current?.openDetail?.(sol);
+      }, 0);
+    } else if (path.startsWith('/architectures/') && id) {
+      setTab('architectures');
+      setIsOnSubpage(true);
+      setTimeout(() => {
+        const arch = architectures.find(a => a.id === id);
+        if (arch) archTabRef.current?.openDetail?.(arch);
+      }, 0);
+    } else if (path.startsWith('/domains/') && id) {
+      setTab('domains');
+      setIsOnSubpage(true);
+      setTimeout(() => {
+        const dom = domains.find(d => d.id === id);
+        if (dom) domainsTabRef.current?.openDomainDetail?.(dom);
+      }, 0);
+    } else if (path.startsWith('/techdomains/') && id) {
+      setTab('techdomains');
+      setIsOnSubpage(true);
+      setTimeout(() => {
+        const td = techDomains.find(d => d.id === id);
+        if (td) domainsTabRef.current?.openTechDomainDetail?.(td);
+      }, 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, id]);
+
   function navigateToTech(tech: Technology) {
-    setTab('technologies');
-    setIsOnSubpage(true);
-    setTimeout(() => techTabRef.current?.openDetail(tech), 0);
+    navigate(`/technologies/${tech.id}`);
   }
   function navigateToReq(_req: Requirement) {
-    setTab('requirements');
-    setIsOnSubpage(false);
+    navigate(`/requirements/${_req.id}`);
   }
 
   function handleTabChange(newTab: Tab) {
     setTab(newTab);
     setIsOnSubpage(false);
+    navigate('/');
   }
 
   function goBack() {
@@ -57,6 +109,7 @@ const Index = () => {
     else if (tab === 'domains') domainsTabRef.current?.goBackDomain();
     else domainsTabRef.current?.goBackTechDomain();
     setIsOnSubpage(false);
+    navigate('/');
   }
 
   function openCreate() {
